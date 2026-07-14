@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<title>見守りMAP</title>
+
+<style>
+body{
+    margin:0;
+    font-family:sans-serif;
+    background:#f5f5f5;
+}
+
+h1{
+    text-align:center;
+    margin:10px;
+}
+
+#map{
+    width:100%;
+    height:70vh;
+}
+
+#info{
+    display:flex;
+    justify-content:space-around;
+    align-items:center;
+    padding:15px;
+    background:white;
+}
+
+.item{
+    text-align:center;
+}
+
+.item img{
+    width:60px;
+    height:auto;
+}
+
+#distance{
+    font-size:24px;
+}
+
+#battery{
+    font-size:20px;
+}
+</style>
+</head>
+<body>
+
+<h1>見守りMAP</h1>
+
+<div id="map"></div>
+
+<div id="info">
+
+    <div class="item">
+        <div style="font-size:40px;">☂️</div>
+        <div>天気</div>
+    </div>
+
+    <div class="item">
+        <div style="font-size:40px;">📏</div>
+        <div id="distance">0 m</div>
+    </div>
+
+    <div class="item">
+        <img id="batteryIcon" src="battery-high.png" alt="battery">
+        <div id="battery">100%</div>
+    </div>
+
+</div>
+
+<script>
+let map;
+let gpsMarker;
+
+const home = {
+    lat:35.645000,
+    lng:139.891667
+};
+
+function initMap(){
+    map = new google.maps.Map(
+        document.getElementById("map"),
+        {
+            zoom:17,
+            center:home
+        }
+    );
+
+    // 家アイコン
+    new google.maps.Marker({
+        position:home,
+        map:map,
+        icon:{
+            url:"home.png",
+            scaledSize:new google.maps.Size(70,70)
+        },
+        title:"HOME"
+    });
+
+    // Aちゃん
+    gpsMarker = new google.maps.Marker({
+        position:home,
+        map:map,
+        label:"A"
+    });
+
+    // テスト用GPSデータ
+    updateFromGGA(
+        "$GNGGA,012345.00,3538.2000,N,13952.9000,E,1,12,0.8,44.5,M,39.4,M,,"
+    );
+
+    // テスト用バッテリー表示（80%）
+    updateBattery(80);
+}
+
+function updateBattery(level){
+    document.getElementById("battery").innerText = level + "%";
+
+    const icon = document.getElementById("batteryIcon");
+    if(!icon) return;
+
+    // 2. スペルのタイポを修正
+    if(level >= 66){
+        icon.src = "battery-high.png"; // 緑 (66%以上)
+    }else if(level >= 33){
+        icon.src = "battery-medium.png"; // 黄 (33%〜65%)
+    }else{
+        icon.src = "battery-low.png"; // 赤 (32%以下)
+    }
+}
+
+function nmeaToDecimal(value,direction){
+    const degLength = (direction==="N" || direction==="S") ? 2 : 3;
+    const degrees = parseFloat(value.substring(0,degLength));
+    const minutes = parseFloat(value.substring(degLength));
+
+    let decimal = degrees + minutes/60;
+    if(direction==="S" || direction==="W"){
+        decimal *= -1;
+    }
+    return decimal;
+}
+
+function updateFromGGA(gga){
+    const d = gga.split(",");
+    if (d.length < 6) return;
+
+    const lat = nmeaToDecimal(d[2],d[3]);
+    const lng = nmeaToDecimal(d[4],d[5]);
+    const pos = { lat:lat, lng:lng };
+
+    gpsMarker.setPosition(pos);
+
+    const distance = getDistance(
+        home.lat,
+        home.lng,
+        lat,
+        lng
+    );
+
+    document.getElementById("distance").innerText = Math.round(distance) + " m";
+}
+
+function getDistance(lat1,lon1,lat2,lon2){
+    const R = 6371000;
+    const dLat = (lat2-lat1)*Math.PI/180;
+    const dLon = (lon2-lon1)*Math.PI/180;
+
+    const a =
+        Math.sin(dLat/2)*Math.sin(dLat/2) +
+        Math.cos(lat1*Math.PI/180) *
+        Math.cos(lat2*Math.PI/180) *
+        Math.sin(dLon/2)*Math.sin(dLon/2);
+
+    const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R*c;
+}
+</script>
+
+<script async defer
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVLN_FmTPYJeawf-qtg9Z69ObbLoI5k74&callback=initMap">
+</script>
+
+</body>
+</html>
