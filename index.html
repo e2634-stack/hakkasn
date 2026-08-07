@@ -11,6 +11,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
 
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
 <style>
 body{
     margin:0;
@@ -68,6 +71,50 @@ h1{
     font-weight: bold;
     color: #2B1C0B;
 }
+
+/* Leaflet用のカスタムマーカースタイル */
+.custom-pin {
+    width: 32px;
+    height: 32px;
+    border-radius: 50% 50% 50% 0;
+    position: absolute;
+    transform: rotate(-45deg);
+    left: 50%;
+    top: 50%;
+    margin: -20px 0 0 -20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.custom-pin-content {
+    transform: rotate(45deg);
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* HOMEピンのスタイル */
+.home-pin {
+    background: #FFFFFF;
+    border: 2px solid #2B1C0B;
+}
+
+.home-pin img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+/* Aちゃんピンのスタイル */
+.a-pin {
+    background: #4285F4;
+    border: 2px solid #FFFFFF;
+    color: #FFFFFF;
+}
 </style>
 </head>
 <body>
@@ -94,64 +141,61 @@ h1{
 
 </div>
 
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
 <script>
 let map;
 let gpsMarker;
 
 const home = {
-    lat:35.645000,
-    lng:139.891667
+    lat: 35.645000,
+    lng: 139.891667
 };
 
-async function initMap(){
-    // マーカーライブラリの読み込み
-    const { Map } = await google.maps.importLibrary("maps");
-    const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+function initMap(){
+    // 地図の初期化 (Leaflet)
+    map = L.map('map').setView([home.lat, home.lng], 17);
 
-    map = new Map(
-        document.getElementById("map"),
-        {
-            zoom:17,
-            center:home,
-            mapId: "DEMO_MAP_ID"
-        }
-    );
+    // OpenStreetMapのタイルを追加
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
 
-    // 1. 家アイコン
-    const homeImage = document.createElement("img");
-    homeImage.src = "home.png";
-    homeImage.style.width = "34px";
-    homeImage.style.height = "34px";
-    homeImage.style.objectFit = "contain";
-    homeImage.style.display = "block";
-    homeImage.style.transform = "translateY(-1px)";
-
-    const homePin = new PinElement({
-        glyph: homeImage,
-        background: "#FFFFFF",
-        borderColor: "#2B1C0B", /* マーカーの枠線も統一 */
+    // 1. 家アイコン（HTML/CSSによるカスタムDIVアイコン）
+    const homeIconHtml = `
+        <div class="custom-pin home-pin">
+            <div class="custom-pin-content">
+                <img src="home.png" alt="HOME">
+            </div>
+        </div>
+    `;
+    
+    const homeIcon = L.divIcon({
+        className: '',
+        html: homeIconHtml,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
     });
 
-    new AdvancedMarkerElement({
-        position: home,
-        map: map,
-        content: homePin.element,
-        title: "HOME"
+    L.marker([home.lat, home.lng], { icon: homeIcon, title: "HOME" }).addTo(map);
+
+    // 2. Aちゃんアイコン
+    const aIconHtml = `
+        <div class="custom-pin a-pin">
+            <div class="custom-pin-content">A</div>
+        </div>
+    `;
+
+    const aIcon = L.divIcon({
+        className: '',
+        html: aIconHtml,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
     });
 
-    // 2. Aちゃん
-    const aPin = new PinElement({
-        glyph: "A",
-        glyphColor: "#FFFFFF",
-        background: "#4285F4",
-    });
-
-    gpsMarker = new AdvancedMarkerElement({
-        position: home,
-        map: map,
-        content: aPin.element,
-        title: "Aちゃん"
-    });
+    gpsMarker = L.marker([home.lat, home.lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
 
     // テスト用GPSデータ
     updateFromGGA(
@@ -195,12 +239,14 @@ function updateFromGGA(gga){
 
     const lat = nmeaToDecimal(d[2],d[3]);
     const lng = nmeaToDecimal(d[4],d[5]);
-    const pos = { lat:lat, lng:lng };
 
-    gpsMarker.position = pos;
+    // Leafletでは [緯度, 経度] の順でセット
+    if (gpsMarker) {
+        gpsMarker.setLatLng([lat, lng]);
+    }
 
     if (map) {
-        map.setCenter(home);
+        map.panTo([home.lat, home.lng]);
     }
 
     const distance = getDistance(
@@ -227,10 +273,9 @@ function getDistance(lat1,lon1,lat2,lon2){
     const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R*c;
 }
-</script>
 
-<script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVLN_FmTPYJeawf-qtg9Z69ObbLoI5k74&callback=initMap&libraries=marker&v=weekly">
+// ページ読み込み完了時にマップを初期化
+window.onload = initMap;
 </script>
 
 </body>
