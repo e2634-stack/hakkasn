@@ -6,10 +6,15 @@
 
 <title>見守りMAP</title>
 
+<!-- M PLUS Rounded 1c フォントの読み込み -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+
 <style>
 body{
     margin:0;
-    font-family:sans-serif;
+    font-family: 'M PLUS Rounded 1c', sans-serif; /* 全体に Rounded M+ フォントを適用 */
     background:#f5f5f5;
 }
 
@@ -50,10 +55,12 @@ h1{
 
 #distance{
     font-size:24px;
+    font-weight: bold;
 }
 
 #battery{
     font-size:20px;
+    font-weight: bold;
 }
 </style>
 </head>
@@ -104,7 +111,7 @@ async function initMap(){
         }
     );
 
-    // 1. 家アイコン（マップピンサイズを変えずに内枠ぎりぎりまで拡大）
+    // 1. 家アイコン
     const homeImage = document.createElement("img");
     homeImage.src = "home.png";
     homeImage.style.width = "34px";
@@ -114,9 +121,9 @@ async function initMap(){
     homeImage.style.transform = "translateY(-1px)";
 
     const homePin = new PinElement({
-        glyph: homeImage,       // 画像を挿入
-        background: "#FFFFFF",   // ピンの背景色（白）
-        borderColor: "#CCCCCC",  // ピンの枠線色（薄いグレー）
+        glyph: homeImage,
+        background: "#FFFFFF",
+        borderColor: "#CCCCCC",
     });
 
     new AdvancedMarkerElement({
