@@ -66,6 +66,7 @@ h1{
 <div id="map"></div>
 
 <div id="info">
+
     <div class="item">
         <div style="font-size:40px;">📏</div>
         <div id="distance">0 m</div>
@@ -144,7 +145,7 @@ async function initMap(){
         "$GNGGA,012345.00,3538.2000,N,13952.9000,E,1,12,0.8,44.5,M,39.4,M,,"
     );
 
-    // テスト用バッテリー表示（80%）
+    // テスト用バッテリー表示（20%）
     updateBattery(20);
 }
 
@@ -155,11 +156,11 @@ function updateBattery(level){
     if(!icon) return;
 
     if(level >= 66){
-        icon.src = "battry-high.png"; // 緑 (66%以上)
-    }else if(level >= 33){
-        icon.src = "battry-mdium.png"; // 黄 (33%〜65%)
+        icon.src = "battry-high.png";   // 66%〜100%
+    }else if(level >= 21){
+        icon.src = "battry-mdium.png";  // 21%〜65%
     }else{
-        icon.src = "battry-low.png"; // 赤 (32%以下)
+        icon.src = "battry-low.png";    // 20%以下
     }
 }
 
@@ -184,6 +185,10 @@ function updateFromGGA(gga){
     const pos = { lat:lat, lng:lng };
 
     gpsMarker.position = pos;
+
+    if (map) {
+        map.setCenter(home);
+    }
 
     const distance = getDistance(
         home.lat,
