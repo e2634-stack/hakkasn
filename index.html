@@ -13,6 +13,14 @@ body{
     background:#f5f5f5;
 }
 
+/* 両サイドの余白を半分程度にする設定 */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 8px;
+    box-sizing: border-box;
+}
+
 h1{
     text-align:center;
     margin:10px;
@@ -51,6 +59,8 @@ h1{
 </head>
 <body>
 
+<div class="container">
+
 <h1>見守りMAP</h1>
 
 <div id="map"></div>
@@ -74,6 +84,8 @@ h1{
 
 </div>
 
+</div>
+
 <script>
 let map;
 let gpsMarker;
@@ -83,31 +95,54 @@ const home = {
     lng:139.891667
 };
 
-function initMap(){
-    map = new google.maps.Map(
+async function initMap(){
+    // マーカーライブラリの読み込み
+    const { Map } = await google.maps.importLibrary("maps");
+    const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+
+    map = new Map(
         document.getElementById("map"),
         {
             zoom:17,
-            center:home
+            center:home,
+            mapId: "DEMO_MAP_ID"
         }
     );
 
-    // 家アイコン
-    new google.maps.Marker({
-        position:home,
-        map:map,
-        icon:{
-            url:"home.png",
-            scaledSize:new google.maps.Size(70,70)
-        },
-        title:"HOME"
+    // 1. 家アイコン（マップピンサイズを変えずに内枠ぎりぎりまで拡大）
+    const homeImage = document.createElement("img");
+    homeImage.src = "home.png";
+    homeImage.style.width = "34px";
+    homeImage.style.height = "34px";
+    homeImage.style.objectFit = "contain";
+    homeImage.style.display = "block";
+    homeImage.style.transform = "translateY(-1px)";
+
+    const homePin = new PinElement({
+        glyph: homeImage,       // 画像を挿入
+        background: "#FFFFFF",   // ピンの背景色（白）
+        borderColor: "#CCCCCC",  // ピンの枠線色（薄いグレー）
     });
 
-    // Aちゃん
-    gpsMarker = new google.maps.Marker({
-        position:home,
-        map:map,
-        label:"A"
+    new AdvancedMarkerElement({
+        position: home,
+        map: map,
+        content: homePin.element,
+        title: "HOME"
+    });
+
+    // 2. Aちゃん
+    const aPin = new PinElement({
+        glyph: "A",
+        glyphColor: "#FFFFFF",
+        background: "#4285F4",
+    });
+
+    gpsMarker = new AdvancedMarkerElement({
+        position: home,
+        map: map,
+        content: aPin.element,
+        title: "Aちゃん"
     });
 
     // テスト用GPSデータ
@@ -125,7 +160,6 @@ function updateBattery(level){
     const icon = document.getElementById("batteryIcon");
     if(!icon) return;
 
-    // 2. スペルのタイポを修正
     if(level >= 66){
         icon.src = "battery-high.png"; // 緑 (66%以上)
     }else if(level >= 33){
@@ -155,7 +189,7 @@ function updateFromGGA(gga){
     const lng = nmeaToDecimal(d[4],d[5]);
     const pos = { lat:lat, lng:lng };
 
-    gpsMarker.setPosition(pos);
+    gpsMarker.position = pos;
 
     const distance = getDistance(
         home.lat,
@@ -184,7 +218,7 @@ function getDistance(lat1,lon1,lat2,lon2){
 </script>
 
 <script async defer
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVLN_FmTPYJeawf-qtg9Z69ObbLoI5k74&callback=initMap">
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDVLN_FmTPYJeawf-qtg9Z69ObbLoI5k74&callback=initMap&libraries=marker&v=weekly">
 </script>
 
 </body>
