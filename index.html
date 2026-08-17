@@ -147,21 +147,36 @@ h1{
 <script>
 let map;
 let gpsMarker;
+let trackLine; // 軌跡用のPolylineオブジェクト
+const pathCoordinates = []; // 走行位置履歴の配列
 
 const home = {
     lat: 35.645000,
     lng: 139.891667
 };
 
+// 東向き（約5mごと）の座標リスト（基準0m + 5点＝計6点）
+const routePoints = [
+    { lat: 35.636667, lng: 139.881667 }, // 0m
+    { lat: 35.636670, lng: 139.881722 }, // 5m
+    { lat: 35.636673, lng: 139.881777 }, // 10m
+    { lat: 35.636676, lng: 139.881832 }, // 15m
+    { lat: 35.636679, lng: 139.881888 }, // 20m
+    { lat: 35.636682, lng: 139.881943 }  // 25m
+];
+
 function initMap(){
-    // 地図の初期化 (Leaflet)
-    map = L.map('map').setView([home.lat, home.lng], 17);
+    // 地図の初期化（基準位置付近を中心に表示）
+    map = L.map('map').setView([routePoints[0].lat, routePoints[0].lng], 18);
 
     // OpenStreetMapのタイルを追加
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
+
+    // 軌跡を描画するPolylineを青色で追加
+    trackLine = L.polyline([], { color: '#4285F4', weight: 4, opacity: 0.8 }).addTo(map);
 
     // 1. 家アイコン（HTML/CSSによるカスタムDIVアイコン）
     const homeIconHtml = `
@@ -195,53 +210,54 @@ function initMap(){
         iconAnchor: [16, 32]
     });
 
-    gpsMarker = L.marker([home.lat, home.lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
-
-    // テスト用GPSデータ（10進数座標を指定してNMEAフォーマットへ自動変換）
-    const testLat = 35.636667; // テスト用緯度
-    const testLng = 139.881667; // テスト用経度
-
-    const ggaSentence = decimalToNMEA(testLat, testLng);
-    updateFromGGA(ggaSentence);
+    gpsMarker = L.marker([routePoints[0].lat, routePoints[0].lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
 
     // テスト用バッテリー表示（20%）
     updateBattery(20);
+
+    // 5秒おきに座標を順次入力するアニメーションを開始
+    startGPSAnimation();
 }
 
-function updateBattery(level){
-    document.getElementById("battery").innerText = level + "%";
+function startGPSAnimation() {
+    let index = 0;
 
-    const icon = document.getElementById("batteryIcon");
-    if(!icon) return;
+    // 最初の地点を処理
+    sendPoint(index);
 
-    if(level >= 66){
-        icon.src = "battry-high.png";   // 66%〜100%
-    }else if(level >= 21){
-        icon.src = "battry-mdium.png";  // 21%〜65%
-    }else{
-        icon.src = "battry-low.png";    // 20%以下
-    }
+    // 5000ミリ秒（5秒）毎に次の座標へ更新
+    const timer = setInterval(() => {
+        index++;
+        if (index < routePoints.length) {
+            sendPoint(index);
+        } else {
+            clearInterval(timer); // 全データ入力完了時にタイマー停止
+        }
+    }, 5000);
+}
+
+function sendPoint(i) {
+    const pt = routePoints[i];
+    const ggaSentence = decimalToNMEA(pt.lat, pt.lng);
+    updateFromGGA(ggaSentence);
 }
 
 /**
  * 10進数座標(lat, lng)を $GNGGA フォーマット文字列に変換する関数
  */
 function decimalToNMEA(lat, lng) {
-    // 緯度の変換 (DDMM.MMMM)
     const latAbs = Math.abs(lat);
     const latDeg = Math.floor(latAbs);
     const latMin = (latAbs - latDeg) * 60;
     const latDir = lat >= 0 ? "N" : "S";
     const latStr = String(latDeg).padStart(2, '0') + latMin.toFixed(4).padStart(7, '0');
 
-    // 経度の変換 (DDDMM.MMMM)
     const lngAbs = Math.abs(lng);
     const lngDeg = Math.floor(lngAbs);
     const lngMin = (lngAbs - lngDeg) * 60;
     const lngDir = lng >= 0 ? "E" : "W";
     const lngStr = String(lngDeg).padStart(3, '0') + lngMin.toFixed(4).padStart(7, '0');
 
-    // GNGGAセンテンスとして生成
     return `$GNGGA,000000.00,${latStr},${latDir},${lngStr},${lngDir},1,12,0.8,0.0,M,0.0,M,,`;
 }
 
@@ -264,15 +280,23 @@ function updateFromGGA(gga){
     const lat = nmeaToDecimal(d[2],d[3]);
     const lng = nmeaToDecimal(d[4],d[5]);
 
-    // Leafletでは [緯度, 経度] の順でセット
+    // 1. ピンの位置を更新
     if (gpsMarker) {
         gpsMarker.setLatLng([lat, lng]);
     }
 
-    if (map) {
-        map.panTo([home.lat, home.lng]);
+    // 2. 軌跡データを追加・更新
+    pathCoordinates.push([lat, lng]);
+    if (trackLine) {
+        trackLine.setLatLngs(pathCoordinates);
     }
 
+    // 3. マップの中心を移動中のピンに追従
+    if (map) {
+        map.panTo([lat, lng]);
+    }
+
+    // 4. HOMEからの距離を計算
     const distance = getDistance(
         home.lat,
         home.lng,
@@ -281,6 +305,21 @@ function updateFromGGA(gga){
     );
 
     document.getElementById("distance").innerText = Math.round(distance) + " m";
+}
+
+function updateBattery(level){
+    document.getElementById("battery").innerText = level + "%";
+
+    const icon = document.getElementById("batteryIcon");
+    if(!icon) return;
+
+    if(level >= 66){
+        icon.src = "battry-high.png";   // 66%〜100%
+    }else if(level >= 21){
+        icon.src = "battry-mdium.png";  // 21%〜65%
+    }else{
+        icon.src = "battry-low.png";    // 20%以下
+    }
 }
 
 function getDistance(lat1,lon1,lat2,lon2){
