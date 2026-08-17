@@ -20,19 +20,54 @@ body{
     font-family: 'M PLUS Rounded 1c', sans-serif;
     color: #2B1C0B; /* 全体の文字色 */
     background:#FFF8EB;
+    transition: background-color 0.5s ease; /* 背景色変更を滑らかに */
+}
+
+/* ★緊急事態モード（背景を赤へ） */
+body.emergency-mode {
+    background: #FF2E2E !important;
 }
 
 /* 両サイドの余白設定 */
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 0 8px;
+    padding: 0 8px 20px 8px;
     box-sizing: border-box;
+    position: relative;
+}
+
+/* テスト用緊急ボタンの配置 */
+.test-btn-wrapper {
+    text-align: right;
+    margin-top: 10px;
+}
+
+.test-btn {
+    background-color: #D93025;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 20px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-family: 'M PLUS Rounded 1c', sans-serif;
+}
+
+.test-btn:hover {
+    background-color: #B31412;
 }
 
 h1{
     text-align:center;
     margin:10px;
+    transition: color 0.5s ease;
+}
+
+body.emergency-mode h1 {
+    color: #FFFFFF;
 }
 
 #map{
@@ -70,6 +105,27 @@ h1{
     font-size:20px;
     font-weight: bold;
     color: #2B1C0B;
+}
+
+/* ★情報欄の下に表示する「緊急事態」パネル */
+#emergencyBanner {
+    display: none; /* 通常時は非表示 */
+    margin-top: 15px;
+    padding: 20px;
+    background-color: #D93025;
+    color: #FFFFFF;
+    text-align: center;
+    font-size: 32px;
+    font-weight: bold;
+    border: 4px solid #FFFFFF;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    animation: pulse 1.2s infinite alternate; /* 点滅アニメーション */
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(1.02); opacity: 1; }
 }
 
 /* Leaflet用のカスタムマーカースタイル */
@@ -121,6 +177,11 @@ h1{
 
 <div class="container">
 
+<!-- テスト動作用ボタン -->
+<div class="test-btn-wrapper">
+    <button class="test-btn" onclick="triggerEmergency()">🚨 ボタン受信（緊急テスト）</button>
+</div>
+
 <h1>見守りMAP</h1>
 
 <div id="map"></div>
@@ -139,6 +200,11 @@ h1{
 
 </div>
 
+<!-- 情報欄（#info）の下に緊急事態表示を追加 -->
+<div id="emergencyBanner">
+    🚨 緊急事態発生 🚨
+</div>
+
 </div>
 
 <!-- Leaflet JS -->
@@ -147,17 +213,16 @@ h1{
 <script>
 let map;
 let gpsMarker;
-let trackLine; // 軌跡用ポリライン
-const pathHistory = []; // 座標履歴を保持する配列
+let trackLine;
+const pathHistory = [];
 
-// さっき算出した東向きに進む5つの座標（10進数）
 const eastRoutePoints = [
-    { lat: 35.636667, lng: 139.881667 }, // 基準 (0m)
-    { lat: 35.636670, lng: 139.881722 }, // 5m
-    { lat: 35.636673, lng: 139.881777 }, // 10m
-    { lat: 35.636676, lng: 139.881832 }, // 15m
-    { lat: 35.636679, lng: 139.881888 }, // 20m
-    { lat: 35.636682, lng: 139.881943 }  // 25m
+    { lat: 35.636667, lng: 139.881667 },
+    { lat: 35.636670, lng: 139.881722 },
+    { lat: 35.636673, lng: 139.881777 },
+    { lat: 35.636676, lng: 139.881832 },
+    { lat: 35.636679, lng: 139.881888 },
+    { lat: 35.636682, lng: 139.881943 }
 ];
 
 const home = {
@@ -166,16 +231,13 @@ const home = {
 };
 
 function initMap(){
-    // 地図の初期化 (Leaflet)
     map = L.map('map').setView([eastRoutePoints[0].lat, eastRoutePoints[0].lng], 19);
 
-    // OpenStreetMapのタイルを追加
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    // 1. 家アイコン（HTML/CSSによるカスタムDIVアイコン）
     const homeIconHtml = `
         <div class="custom-pin home-pin">
             <div class="custom-pin-content">
@@ -193,7 +255,6 @@ function initMap(){
 
     L.marker([home.lat, home.lng], { icon: homeIcon, title: "HOME" }).addTo(map);
 
-    // 2. Aちゃんアイコン
     const aIconHtml = `
         <div class="custom-pin a-pin">
             <div class="custom-pin-content">A</div>
@@ -209,10 +270,8 @@ function initMap(){
 
     gpsMarker = L.marker([eastRoutePoints[0].lat, eastRoutePoints[0].lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
 
-    // 3. 軌跡描画用のポリラインの初期化（青い太線）
     trackLine = L.polyline([], { color: '#4285F4', weight: 5, opacity: 0.7 }).addTo(map);
 
-    // 5秒おきに次の座標を入力する処理
     let currentIndex = 0;
     
     function sendNextCoordinate() {
@@ -220,18 +279,27 @@ function initMap(){
         const ggaSentence = decimalToNMEA(point.lat, point.lng);
         updateFromGGA(ggaSentence);
 
-        // インデックスを進める（最後までいったらループ）
         currentIndex = (currentIndex + 1) % eastRoutePoints.length;
     }
 
-    // 初回実行
     sendNextCoordinate();
-
-    // 5000ミリ秒（5秒）おきに実行
     setInterval(sendNextCoordinate, 5000);
 
-    // テスト用バッテリー表示（20%）
     updateBattery(20);
+}
+
+/**
+ * ★ボタンが押された（緊急情報を受信した）ときに呼び出す関数
+ */
+function triggerEmergency() {
+    // 画面全体（body）を真っ赤に変更
+    document.body.classList.add("emergency-mode");
+
+    // 距離・バッテリー欄の下にある警告パネルを表示
+    const banner = document.getElementById("emergencyBanner");
+    if (banner) {
+        banner.style.display = "block";
+    }
 }
 
 function updateBattery(level){
@@ -241,17 +309,14 @@ function updateBattery(level){
     if(!icon) return;
 
     if(level >= 66){
-        icon.src = "battry-high.png";   // 66%〜100%
+        icon.src = "battry-high.png";
     }else if(level >= 21){
-        icon.src = "battry-mdium.png";  // 21%〜65%
+        icon.src = "battry-mdium.png";
     }else{
-        icon.src = "battry-low.png";    // 20%以下
+        icon.src = "battry-low.png";
     }
 }
 
-/**
- * 10進数座標(lat, lng)を $GNGGA フォーマット文字列に変換する関数
- */
 function decimalToNMEA(lat, lng) {
     const latAbs = Math.abs(lat);
     const latDeg = Math.floor(latAbs);
@@ -288,20 +353,16 @@ function updateFromGGA(gga){
     const lng = nmeaToDecimal(d[4],d[5]);
     const currentPos = [lat, lng];
 
-    // マーカー位置の更新
     if (gpsMarker) {
         gpsMarker.setLatLng(currentPos);
     }
 
-    // 地図の中心をマーカーに移動
     if (map) {
         map.panTo(currentPos);
     }
 
-    // --- 20m以内の軌跡計算・描画処理 ---
     pathHistory.push(currentPos);
 
-    // 最新の地点から過去へさかのぼり、累計距離が20mを超える古い座標を除去
     let totalDist = 0;
     let keepIndex = pathHistory.length - 1;
 
@@ -311,23 +372,20 @@ function updateFromGGA(gga){
         const segDist = getDistance(p1[0], p1[1], p2[0], p2[1]);
         
         if (totalDist + segDist > 20) {
-            break; // 累計20mを超えたらそこで切る
+            break;
         }
         totalDist += segDist;
         keepIndex = i - 1;
     }
 
-    // 20m範囲内のデータのみを配列表列として保持
     if (keepIndex > 0) {
         pathHistory.splice(0, keepIndex);
     }
 
-    // ポリライン（青線）を更新
     if (trackLine) {
         trackLine.setLatLngs(pathHistory);
     }
 
-    // 自宅からの距離計算
     const distance = getDistance(
         home.lat,
         home.lng,
@@ -353,7 +411,6 @@ function getDistance(lat1,lon1,lat2,lon2){
     return R*c;
 }
 
-// ページ読み込み完了時にマップを初期化
 window.onload = initMap;
 </script>
 
