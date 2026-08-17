@@ -76,8 +76,8 @@ header {
 .sidebar {
     position: fixed;
     top: 0;
-    left: -280px; /* 初期状態は画面外 */
-    width: 260px;
+    left: -300px; /* 初期状態は画面外 */
+    width: 280px;
     height: 100%;
     background-color: #FFFFFF;
     box-shadow: 2px 0 10px rgba(0,0,0,0.3);
@@ -85,6 +85,7 @@ header {
     z-index: 2000;
     padding: 20px 15px;
     box-sizing: border-box;
+    overflow-y: auto;
 }
 
 .sidebar.open {
@@ -96,8 +97,49 @@ header {
     font-weight: bold;
     border-bottom: 2px solid #FFF8EB;
     padding-bottom: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     text-align: center;
+}
+
+.sidebar-section {
+    background: #FFF8EB;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.sidebar-section-title {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #2B1C0B;
+}
+
+.address-input-group {
+    display: flex;
+    gap: 5px;
+}
+
+.address-input {
+    flex: 1;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.btn-search {
+    background-color: #0288D1;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
 }
 
 .sidebar-btn {
@@ -127,6 +169,7 @@ header {
 .btn-emergency {
     background-color: #D93025;
     color: white;
+    margin-top: 10px;
 }
 
 @keyframes pulse-btn {
@@ -163,7 +206,7 @@ body.emergency-mode h1 {
 
 #map{
     width:100%;
-    height:60vh;
+    height:70vh;
 }
 
 /* 地図クリック選択モード時のカーソル指定 */
@@ -272,7 +315,22 @@ body.emergency-mode h1 {
 <!-- サイドバー（スライドメニュー） -->
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
-    <button id="changeHomeBtn" class="sidebar-btn btn-home" onclick="toggleSetHomeMode()">🏠 家の位置を変更</button>
+    
+    <!-- 方法1：住所から設定 -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">🏠 住所を入力して設定</div>
+        <div class="address-input-group">
+            <input type="text" id="addressInput" class="address-input" placeholder="例: 東京都千代田区1-1">
+            <button class="btn-search" onclick="searchAddress()">設定</button>
+        </div>
+    </div>
+
+    <!-- 方法2：マップをタップして設定 -->
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">📍 マップ上で選択</div>
+        <button id="changeHomeBtn" class="sidebar-btn btn-home" onclick="toggleSetHomeMode()" style="margin-bottom:0;">タップして位置決定</button>
+    </div>
+
     <button class="sidebar-btn btn-emergency" onclick="triggerEmergency()">🚨 緊急テスト</button>
 </div>
 
@@ -420,7 +478,39 @@ function closeMenu() {
     document.getElementById("overlay").classList.remove("show");
 }
 
-/* ★家の位置変更モード切り替え */
+/* ★住所検索処理（国土地理院API） */
+function searchAddress() {
+    const address = document.getElementById("addressInput").value.trim();
+    if (!address) {
+        alert("住所を入力してください");
+        return;
+    }
+
+    const url = `https://msearch.gsi.go.jp/address-search/Query?q=${encodeURIComponent(address)}`;
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                // 国土地理院のレスポンス形式: [経度(lng), 緯度(lat)]
+                const lon = data[0].geometry.coordinates[0];
+                const lat = data[0].geometry.coordinates[1];
+
+                updateHomePosition(lat, lon);
+                map.setView([lat, lon], 17); // 家の場所に画面移動
+                closeMenu();
+                alert(`「${data[0].properties.title}」を家に設定しました。`);
+            } else {
+                alert("該当する住所が見つかりませんでした。");
+            }
+        })
+        .catch(error => {
+            console.error("エラー:", error);
+            alert("住所の検索中にエラーが発生しました。");
+        });
+}
+
+/* ★マップタップモード切り替え */
 function toggleSetHomeMode() {
     isSettingHome = !isSettingHome;
     const btn = document.getElementById("changeHomeBtn");
@@ -431,12 +521,11 @@ function toggleSetHomeMode() {
         btn.classList.add("active");
         mapElement.classList.add("selecting-home");
     } else {
-        btn.innerText = "🏠 家の位置を変更";
+        btn.innerText = "タップして位置決定";
         btn.classList.remove("active");
         mapElement.classList.remove("selecting-home");
     }
     
-    // 操作を開始したらメニューを閉じる
     closeMenu();
 }
 
@@ -466,7 +555,7 @@ function triggerEmergency() {
     if (banner) {
         banner.style.display = "block";
     }
-    closeMenu(); // メニューを閉じる
+    closeMenu();
 }
 
 function updateBattery(level){
