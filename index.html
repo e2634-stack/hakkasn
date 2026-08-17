@@ -197,10 +197,12 @@ function initMap(){
 
     gpsMarker = L.marker([home.lat, home.lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
 
-    // テスト用GPSデータ
-    updateFromGGA(
-        "$GNGGA,012345.00,3538.2000,N,13952.9000,E,1,12,0.8,44.5,M,39.4,M,,"
-    );
+    // テスト用GPSデータ（10進数座標を指定してNMEAフォーマットへ自動変換）
+    const testLat = 35.636667; // テスト用緯度
+    const testLng = 139.881667; // テスト用経度
+
+    const ggaSentence = decimalToNMEA(testLat, testLng);
+    updateFromGGA(ggaSentence);
 
     // テスト用バッテリー表示（20%）
     updateBattery(20);
@@ -219,6 +221,28 @@ function updateBattery(level){
     }else{
         icon.src = "battry-low.png";    // 20%以下
     }
+}
+
+/**
+ * 10進数座標(lat, lng)を $GNGGA フォーマット文字列に変換する関数
+ */
+function decimalToNMEA(lat, lng) {
+    // 緯度の変換 (DDMM.MMMM)
+    const latAbs = Math.abs(lat);
+    const latDeg = Math.floor(latAbs);
+    const latMin = (latAbs - latDeg) * 60;
+    const latDir = lat >= 0 ? "N" : "S";
+    const latStr = String(latDeg).padStart(2, '0') + latMin.toFixed(4).padStart(7, '0');
+
+    // 経度の変換 (DDDMM.MMMM)
+    const lngAbs = Math.abs(lng);
+    const lngDeg = Math.floor(lngAbs);
+    const lngMin = (lngAbs - lngDeg) * 60;
+    const lngDir = lng >= 0 ? "E" : "W";
+    const lngStr = String(lngDeg).padStart(3, '0') + lngMin.toFixed(4).padStart(7, '0');
+
+    // GNGGAセンテンスとして生成
+    return `$GNGGA,000000.00,${latStr},${latDir},${lngStr},${lngDir},1,12,0.8,0.0,M,0.0,M,,`;
 }
 
 function nmeaToDecimal(value,direction){
