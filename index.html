@@ -76,8 +76,8 @@ header {
 .sidebar {
     position: fixed;
     top: 0;
-    left: -300px; /* 初期状態は画面外 */
-    width: 280px;
+    left: -280px; /* 初期状態は画面外 */
+    width: 260px;
     height: 100%;
     background-color: #FFFFFF;
     box-shadow: 2px 0 10px rgba(0,0,0,0.3);
@@ -85,7 +85,6 @@ header {
     z-index: 2000;
     padding: 20px 15px;
     box-sizing: border-box;
-    overflow-y: auto;
 }
 
 .sidebar.open {
@@ -97,49 +96,8 @@ header {
     font-weight: bold;
     border-bottom: 2px solid #FFF8EB;
     padding-bottom: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 20px;
     text-align: center;
-}
-
-.sidebar-section {
-    background: #FFF8EB;
-    padding: 12px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-}
-
-.sidebar-section-title {
-    font-size: 14px;
-    font-weight: bold;
-    margin-bottom: 8px;
-    color: #2B1C0B;
-}
-
-.address-input-group {
-    display: flex;
-    gap: 5px;
-}
-
-.address-input {
-    flex: 1;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 13px;
-    font-family: inherit;
-    box-sizing: border-box;
-}
-
-.btn-search {
-    background-color: #0288D1;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 8px 12px;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-    white-space: nowrap;
 }
 
 .sidebar-btn {
@@ -169,7 +127,6 @@ header {
 .btn-emergency {
     background-color: #D93025;
     color: white;
-    margin-top: 10px;
 }
 
 @keyframes pulse-btn {
@@ -315,22 +272,7 @@ body.emergency-mode h1 {
 <!-- サイドバー（スライドメニュー） -->
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
-    
-    <!-- 方法1：住所から設定 -->
-    <div class="sidebar-section">
-        <div class="sidebar-section-title">🏠 住所を入力して設定</div>
-        <div class="address-input-group">
-            <input type="text" id="addressInput" class="address-input" placeholder="例: 兵庫県明石市魚住町西岡671-3">
-            <button id="searchBtn" class="btn-search" onclick="searchAddress()">設定</button>
-        </div>
-    </div>
-
-    <!-- 方法2：マップをタップして設定 -->
-    <div class="sidebar-section">
-        <div class="sidebar-section-title">📍 マップ上で選択</div>
-        <button id="changeHomeBtn" class="sidebar-btn btn-home" onclick="toggleSetHomeMode()" style="margin-bottom:0;">タップして位置決定</button>
-    </div>
-
+    <button id="changeHomeBtn" class="sidebar-btn btn-home" onclick="toggleSetHomeMode()">🏠 家の位置を変更</button>
     <button class="sidebar-btn btn-emergency" onclick="triggerEmergency()">🚨 緊急テスト</button>
 </div>
 
@@ -478,69 +420,7 @@ function closeMenu() {
     document.getElementById("overlay").classList.remove("show");
 }
 
-/* ★住所検索処理（日本住所フォールバック検索機能付き） */
-async function searchAddress() {
-    let rawAddress = document.getElementById("addressInput").value.trim();
-    const btn = document.getElementById("searchBtn");
-
-    if (!rawAddress) {
-        alert("住所を入力してください");
-        return;
-    }
-
-    btn.innerText = "検索中...";
-    btn.disabled = true;
-
-    // 数字記号の正規化（全角英数字・全角ハイフンを半角に変換）
-    let normalized = rawAddress.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
-        return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-    }).replace(/[－―ー−]/g, '-');
-
-    // 検索を順番に試行（1. 全体検索 -> 2. 番地切り捨て検索）
-    const searchQueries = [
-        normalized,
-        normalized.replace(/-\d+$/, ''), // 枝番（-3等）をカットして再試行
-        normalized.replace(/-\d+-\d+$/, ''), // 番地以下をカット
-        normalized.replace(/\d+.*$/, '') // 数字以降をすべてカットして町名だけで検索
-    ];
-
-    let found = false;
-
-    for (let query of searchQueries) {
-        if (!query) continue;
-        
-        try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=jp`;
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data && data.length > 0) {
-                const lat = parseFloat(data[0].lat);
-                const lon = parseFloat(data[0].lon);
-
-                updateHomePosition(lat, lon);
-                map.setView([lat, lon], 17); // 家の場所に画面移動
-                closeMenu();
-                
-                let locationName = data[0].display_name.split(',')[0];
-                alert(`「${locationName}」付近を家に設定しました。`);
-                found = true;
-                break;
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
-    if (!found) {
-        alert("住所が見つかりませんでした。\n都道府県や市区町村名（例: 兵庫県明石市魚住町）でお試しください。");
-    }
-
-    btn.innerText = "設定";
-    btn.disabled = false;
-}
-
-/* ★マップタップモード切り替え */
+/* ★家の位置変更モード切り替え */
 function toggleSetHomeMode() {
     isSettingHome = !isSettingHome;
     const btn = document.getElementById("changeHomeBtn");
@@ -551,11 +431,12 @@ function toggleSetHomeMode() {
         btn.classList.add("active");
         mapElement.classList.add("selecting-home");
     } else {
-        btn.innerText = "タップして位置決定";
+        btn.innerText = "🏠 家の位置を変更";
         btn.classList.remove("active");
         mapElement.classList.remove("selecting-home");
     }
     
+    // 操作を開始したらメニューを閉じる
     closeMenu();
 }
 
@@ -585,7 +466,7 @@ function triggerEmergency() {
     if (banner) {
         banner.style.display = "block";
     }
-    closeMenu();
+    closeMenu(); // メニューを閉じる
 }
 
 function updateBattery(level){
