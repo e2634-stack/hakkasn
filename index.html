@@ -316,11 +316,11 @@ body.emergency-mode h1 {
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
     
-    <!-- 方法1：住所・施設名から設定 -->
+    <!-- 方法1：住所から設定 -->
     <div class="sidebar-section">
-        <div class="sidebar-section-title">🏠 住所・施設名を入力</div>
+        <div class="sidebar-section-title">🏠 住所を入力して設定</div>
         <div class="address-input-group">
-            <input type="text" id="addressInput" class="address-input" placeholder="例: 明石高専 または 明石市魚住町">
+            <input type="text" id="addressInput" class="address-input" placeholder="例: 兵庫県明石市魚住町西岡671-3">
             <button id="searchBtn" class="btn-search" onclick="searchAddress()">設定</button>
         </div>
     </div>
@@ -478,56 +478,66 @@ function closeMenu() {
     document.getElementById("overlay").classList.remove("show");
 }
 
-/* ★住所・施設名検索処理（多角対応API） */
+/* ★住所検索処理（日本住所フォールバック検索機能付き） */
 async function searchAddress() {
-    const query = document.getElementById("addressInput").value.trim();
+    let rawAddress = document.getElementById("addressInput").value.trim();
     const btn = document.getElementById("searchBtn");
 
-    if (!query) {
-        alert("住所または施設名を入力してください");
+    if (!rawAddress) {
+        alert("住所を入力してください");
         return;
     }
 
     btn.innerText = "検索中...";
     btn.disabled = true;
 
-    // 検索精度の向上のため、ハイフンなどの表記揺れや「1160番地」などの全角数字を調整
-    let cleanQuery = query.replace(/[ー−-]/g, '-');
+    // 数字記号の正規化（全角英数字・全角ハイフンを半角に変換）
+    let normalized = rawAddress.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+        return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+    }).replace(/[－―ー−]/g, '-');
 
-    try {
-        // 1. Nominatim API（施設名・一般的な検索）
-        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanQuery)}&countrycodes=jp&limit=1`;
-        let response = await fetch(url);
-        let data = await response.json();
+    // 検索を順番に試行（1. 全体検索 -> 2. 番地切り捨て検索）
+    const searchQueries = [
+        normalized,
+        normalized.replace(/-\d+$/, ''), // 枝番（-3等）をカットして再試行
+        normalized.replace(/-\d+-\d+$/, ''), // 番地以下をカット
+        normalized.replace(/\d+.*$/, '') // 数字以降をすべてカットして町名だけで検索
+    ];
 
-        // 2. もし丁目・番地などで見つからなかった場合、番地部分を除いた町名単位でフォールバック検索
-        if ((!data || data.length === 0) && /\d/.test(cleanQuery)) {
-            const areaQuery = cleanQuery.replace(/[-−ー]?\d+.*$/, '');
-            if (areaQuery) {
-                url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(areaQuery)}&countrycodes=jp&limit=1`;
-                response = await fetch(url);
-                data = await response.json();
+    let found = false;
+
+    for (let query of searchQueries) {
+        if (!query) continue;
+        
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=jp`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+
+                updateHomePosition(lat, lon);
+                map.setView([lat, lon], 17); // 家の場所に画面移動
+                closeMenu();
+                
+                let locationName = data[0].display_name.split(',')[0];
+                alert(`「${locationName}」付近を家に設定しました。`);
+                found = true;
+                break;
             }
+        } catch (e) {
+            console.error(e);
         }
-
-        if (data && data.length > 0) {
-            const lat = parseFloat(data[0].lat);
-            const lon = parseFloat(data[0].lon);
-
-            updateHomePosition(lat, lon);
-            map.setView([lat, lon], 17); // 家の場所に画面移動
-            closeMenu();
-            alert(`「${query}」の位置を設定しました。`);
-        } else {
-            alert("該当する位置が見つかりませんでした。「明石高専」や「兵庫県明石市魚住町西岡」などの形式でお試しください。");
-        }
-    } catch (error) {
-        console.error("エラー:", error);
-        alert("検索処理中にエラーが発生しました。");
-    } finally {
-        btn.innerText = "設定";
-        btn.disabled = false;
     }
+
+    if (!found) {
+        alert("住所が見つかりませんでした。\n都道府県や市区町村名（例: 兵庫県明石市魚住町）でお試しください。");
+    }
+
+    btn.innerText = "設定";
+    btn.disabled = false;
 }
 
 /* ★マップタップモード切り替え */
