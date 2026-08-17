@@ -147,17 +147,12 @@ h1{
 <script>
 let map;
 let gpsMarker;
-let trackLine; // 軌跡用のPolylineオブジェクト
-const pathCoordinates = []; // 走行位置履歴の配列
+let trackLine; // 軌跡用ポリライン
+const pathHistory = []; // 座標履歴を保持する配列
 
-const home = {
-    lat: 35.645000,
-    lng: 139.891667
-};
-
-// 東向き（約5mごと）の座標リスト（基準0m + 5点＝計6点）
-const routePoints = [
-    { lat: 35.636667, lng: 139.881667 }, // 0m
+// さっき算出した東向きに進む5つの座標（10進数）
+const eastRoutePoints = [
+    { lat: 35.636667, lng: 139.881667 }, // 基準 (0m)
     { lat: 35.636670, lng: 139.881722 }, // 5m
     { lat: 35.636673, lng: 139.881777 }, // 10m
     { lat: 35.636676, lng: 139.881832 }, // 15m
@@ -165,18 +160,20 @@ const routePoints = [
     { lat: 35.636682, lng: 139.881943 }  // 25m
 ];
 
+const home = {
+    lat: 35.645000,
+    lng: 139.891667
+};
+
 function initMap(){
-    // 地図の初期化（基準位置付近を中心に表示）
-    map = L.map('map').setView([routePoints[0].lat, routePoints[0].lng], 18);
+    // 地図の初期化 (Leaflet)
+    map = L.map('map').setView([eastRoutePoints[0].lat, eastRoutePoints[0].lng], 19);
 
     // OpenStreetMapのタイルを追加
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
-
-    // 軌跡を描画するPolylineを青色で追加
-    trackLine = L.polyline([], { color: '#4285F4', weight: 4, opacity: 0.8 }).addTo(map);
 
     // 1. 家アイコン（HTML/CSSによるカスタムDIVアイコン）
     const homeIconHtml = `
@@ -210,36 +207,46 @@ function initMap(){
         iconAnchor: [16, 32]
     });
 
-    gpsMarker = L.marker([routePoints[0].lat, routePoints[0].lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
+    gpsMarker = L.marker([eastRoutePoints[0].lat, eastRoutePoints[0].lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
+
+    // 3. 軌跡描画用のポリラインの初期化（青い太線）
+    trackLine = L.polyline([], { color: '#4285F4', weight: 5, opacity: 0.7 }).addTo(map);
+
+    // 5秒おきに次の座標を入力する処理
+    let currentIndex = 0;
+    
+    function sendNextCoordinate() {
+        const point = eastRoutePoints[currentIndex];
+        const ggaSentence = decimalToNMEA(point.lat, point.lng);
+        updateFromGGA(ggaSentence);
+
+        // インデックスを進める（最後までいったらループ）
+        currentIndex = (currentIndex + 1) % eastRoutePoints.length;
+    }
+
+    // 初回実行
+    sendNextCoordinate();
+
+    // 5000ミリ秒（5秒）おきに実行
+    setInterval(sendNextCoordinate, 5000);
 
     // テスト用バッテリー表示（20%）
     updateBattery(20);
-
-    // 5秒おきに座標を順次入力するアニメーションを開始
-    startGPSAnimation();
 }
 
-function startGPSAnimation() {
-    let index = 0;
+function updateBattery(level){
+    document.getElementById("battery").innerText = level + "%";
 
-    // 最初の地点を処理
-    sendPoint(index);
+    const icon = document.getElementById("batteryIcon");
+    if(!icon) return;
 
-    // 5000ミリ秒（5秒）毎に次の座標へ更新
-    const timer = setInterval(() => {
-        index++;
-        if (index < routePoints.length) {
-            sendPoint(index);
-        } else {
-            clearInterval(timer); // 全データ入力完了時にタイマー停止
-        }
-    }, 5000);
-}
-
-function sendPoint(i) {
-    const pt = routePoints[i];
-    const ggaSentence = decimalToNMEA(pt.lat, pt.lng);
-    updateFromGGA(ggaSentence);
+    if(level >= 66){
+        icon.src = "battry-high.png";   // 66%〜100%
+    }else if(level >= 21){
+        icon.src = "battry-mdium.png";  // 21%〜65%
+    }else{
+        icon.src = "battry-low.png";    // 20%以下
+    }
 }
 
 /**
@@ -279,24 +286,48 @@ function updateFromGGA(gga){
 
     const lat = nmeaToDecimal(d[2],d[3]);
     const lng = nmeaToDecimal(d[4],d[5]);
+    const currentPos = [lat, lng];
 
-    // 1. ピンの位置を更新
+    // マーカー位置の更新
     if (gpsMarker) {
-        gpsMarker.setLatLng([lat, lng]);
+        gpsMarker.setLatLng(currentPos);
     }
 
-    // 2. 軌跡データを追加・更新
-    pathCoordinates.push([lat, lng]);
-    if (trackLine) {
-        trackLine.setLatLngs(pathCoordinates);
-    }
-
-    // 3. マップの中心を移動中のピンに追従
+    // 地図の中心をマーカーに移動
     if (map) {
-        map.panTo([lat, lng]);
+        map.panTo(currentPos);
     }
 
-    // 4. HOMEからの距離を計算
+    // --- 20m以内の軌跡計算・描画処理 ---
+    pathHistory.push(currentPos);
+
+    // 最新の地点から過去へさかのぼり、累計距離が20mを超える古い座標を除去
+    let totalDist = 0;
+    let keepIndex = pathHistory.length - 1;
+
+    for (let i = pathHistory.length - 1; i > 0; i--) {
+        const p1 = pathHistory[i];
+        const p2 = pathHistory[i - 1];
+        const segDist = getDistance(p1[0], p1[1], p2[0], p2[1]);
+        
+        if (totalDist + segDist > 20) {
+            break; // 累計20mを超えたらそこで切る
+        }
+        totalDist += segDist;
+        keepIndex = i - 1;
+    }
+
+    // 20m範囲内のデータのみを配列表列として保持
+    if (keepIndex > 0) {
+        pathHistory.splice(0, keepIndex);
+    }
+
+    // ポリライン（青線）を更新
+    if (trackLine) {
+        trackLine.setLatLngs(pathHistory);
+    }
+
+    // 自宅からの距離計算
     const distance = getDistance(
         home.lat,
         home.lng,
@@ -305,21 +336,6 @@ function updateFromGGA(gga){
     );
 
     document.getElementById("distance").innerText = Math.round(distance) + " m";
-}
-
-function updateBattery(level){
-    document.getElementById("battery").innerText = level + "%";
-
-    const icon = document.getElementById("batteryIcon");
-    if(!icon) return;
-
-    if(level >= 66){
-        icon.src = "battry-high.png";   // 66%〜100%
-    }else if(level >= 21){
-        icon.src = "battry-mdium.png";  // 21%〜65%
-    }else{
-        icon.src = "battry-low.png";    // 20%以下
-    }
 }
 
 function getDistance(lat1,lon1,lat2,lon2){
