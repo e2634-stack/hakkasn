@@ -321,7 +321,7 @@ body.emergency-mode h1 {
         <div class="sidebar-section-title">🏠 住所を入力して設定</div>
         <div class="address-input-group">
             <input type="text" id="addressInput" class="address-input" placeholder="例: 東京都千代田区1-1">
-            <button class="btn-search" onclick="searchAddress()">設定</button>
+            <button id="searchBtn" class="btn-search" onclick="searchAddress()">設定</button>
         </div>
     </div>
 
@@ -478,35 +478,47 @@ function closeMenu() {
     document.getElementById("overlay").classList.remove("show");
 }
 
-/* ★住所検索処理（国土地理院API） */
+/* ★住所検索処理（Nominatim APIを利用） */
 function searchAddress() {
     const address = document.getElementById("addressInput").value.trim();
+    const btn = document.getElementById("searchBtn");
+
     if (!address) {
         alert("住所を入力してください");
         return;
     }
 
-    const url = `https://msearch.gsi.go.jp/address-search/Query?q=${encodeURIComponent(address)}`;
+    btn.innerText = "検索中...";
+    btn.disabled = true;
+
+    // OpenStreetMapの検索APIを利用
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=jp`;
 
     fetch(url)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error("通信エラーが発生しました");
+            return response.json();
+        })
         .then(data => {
             if (data && data.length > 0) {
-                // 国土地理院のレスポンス形式: [経度(lng), 緯度(lat)]
-                const lon = data[0].geometry.coordinates[0];
-                const lat = data[0].geometry.coordinates[1];
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
 
                 updateHomePosition(lat, lon);
                 map.setView([lat, lon], 17); // 家の場所に画面移動
                 closeMenu();
-                alert(`「${data[0].properties.title}」を家に設定しました。`);
+                alert(`「${data[0].display_name.split(',')[0]}」周辺を家に設定しました。`);
             } else {
-                alert("該当する住所が見つかりませんでした。");
+                alert("該当する住所が見つかりませんでした。都道府県や市区町村名を含めて試してみてください。");
             }
         })
         .catch(error => {
             console.error("エラー:", error);
-            alert("住所の検索中にエラーが発生しました。");
+            alert("住所の検索中にエラーが発生しました。ネットワーク状態を確認してください。");
+        })
+        .finally(() => {
+            btn.innerText = "設定";
+            btn.disabled = false;
         });
 }
 
