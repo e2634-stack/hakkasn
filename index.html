@@ -336,7 +336,9 @@ const eastRoutePoints = [
     { lat: 35.636682, lng: 139.881943 }
 ];
 
-let home = {
+// ★【修正箇所 1】保存された家の位置情報を取得（なければデフォルト値を使用）
+const savedHome = JSON.parse(localStorage.getItem("homeLocation"));
+let home = savedHome || {
     lat: 35.645000,
     lng: 139.891667
 };
@@ -407,7 +409,7 @@ function initMap(){
     updateBattery(20);
 }
 
-/* ★メニューの開閉処理 */
+/* メニューの開閉処理 */
 function toggleMenu() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("overlay");
@@ -420,7 +422,7 @@ function closeMenu() {
     document.getElementById("overlay").classList.remove("show");
 }
 
-/* ★家の位置変更モード切り替え */
+/* 家の位置変更モード切り替え */
 function toggleSetHomeMode() {
     isSettingHome = !isSettingHome;
     const btn = document.getElementById("changeHomeBtn");
@@ -444,6 +446,9 @@ function updateHomePosition(newLat, newLng) {
     home.lat = newLat;
     home.lng = newLng;
 
+    // ★【修正箇所 2】新しい家の位置情報を localStorage に保存
+    localStorage.setItem("homeLocation", JSON.stringify(home));
+
     if (homeMarker) {
         homeMarker.setLatLng([newLat, newLng]);
     }
@@ -459,7 +464,7 @@ function updateHomePosition(newLat, newLng) {
     }
 }
 
-/* ★緊急事態発動処理 */
+/* 緊急事態発動処理 */
 function triggerEmergency() {
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
