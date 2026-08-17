@@ -37,14 +37,15 @@ body.emergency-mode {
     position: relative;
 }
 
-/* テスト用緊急ボタンの配置 */
-.test-btn-wrapper {
-    text-align: right;
+/* テスト用＆操作用ボタン配置エリア */
+.action-btn-wrapper {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
     margin-top: 10px;
 }
 
-.test-btn {
-    background-color: #D93025;
+.action-btn {
     color: white;
     border: none;
     padding: 8px 16px;
@@ -54,6 +55,29 @@ body.emergency-mode {
     cursor: pointer;
     box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     font-family: 'M PLUS Rounded 1c', sans-serif;
+    transition: all 0.2s ease;
+}
+
+.home-change-btn {
+    background-color: #2e7d32;
+}
+
+.home-change-btn:hover {
+    background-color: #1b5e20;
+}
+
+.home-change-btn.active {
+    background-color: #e65100;
+    animation: pulse-btn 1s infinite alternate;
+}
+
+@keyframes pulse-btn {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.05); }
+}
+
+.test-btn {
+    background-color: #D93025;
 }
 
 .test-btn:hover {
@@ -73,6 +97,11 @@ body.emergency-mode h1 {
 #map{
     width:100%;
     height:70vh;
+}
+
+/* 地図クリック選択モード時のカーソル指定 */
+#map.selecting-home {
+    cursor: crosshair !important;
 }
 
 #info{
@@ -120,7 +149,7 @@ body.emergency-mode h1 {
     border: 4px solid #FFFFFF;
     border-radius: 16px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-    animation: pulse 1.2s infinite alternate; /* 点滅アニメーション */
+    animation: pulse 1.2s infinite alternate;
 }
 
 @keyframes pulse {
@@ -177,9 +206,10 @@ body.emergency-mode h1 {
 
 <div class="container">
 
-<!-- テスト動作用ボタン -->
-<div class="test-btn-wrapper">
-    <button class="test-btn" onclick="triggerEmergency()">🚨 ボタン受信（緊急テスト）</button>
+<!-- 操作ボタン配置エリア -->
+<div class="action-btn-wrapper">
+    <button id="changeHomeBtn" class="action-btn home-change-btn" onclick="toggleSetHomeMode()">🏠 家の位置を変更</button>
+    <button class="action-btn test-btn" onclick="triggerEmergency()">🚨 ボタン受信（緊急テスト）</button>
 </div>
 
 <h1>見守りMAP</h1>
@@ -213,8 +243,12 @@ body.emergency-mode h1 {
 <script>
 let map;
 let gpsMarker;
+let homeMarker; // HOMEマーカー用変数
 let trackLine;
 const pathHistory = [];
+
+let isSettingHome = false; // 家の位置選択モードフラグ
+let lastCurrentPos = null; // 最新のAちゃんの位置を保持
 
 const eastRoutePoints = [
     { lat: 35.636667, lng: 139.881667 },
@@ -225,7 +259,8 @@ const eastRoutePoints = [
     { lat: 35.636682, lng: 139.881943 }
 ];
 
-const home = {
+// 初期設定の家の座標
+let home = {
     lat: 35.645000,
     lng: 139.891667
 };
@@ -238,6 +273,7 @@ function initMap(){
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
+    // 1. 家アイコン
     const homeIconHtml = `
         <div class="custom-pin home-pin">
             <div class="custom-pin-content">
@@ -253,8 +289,17 @@ function initMap(){
         iconAnchor: [16, 32]
     });
 
-    L.marker([home.lat, home.lng], { icon: homeIcon, title: "HOME" }).addTo(map);
+    homeMarker = L.marker([home.lat, home.lng], { icon: homeIcon, title: "HOME" }).addTo(map);
 
+    // ★地図上をクリックした時に「家の位置を変更」する処理イベント
+    map.on('click', function(e) {
+        if (isSettingHome) {
+            updateHomePosition(e.latlng.lat, e.latlng.lng);
+            toggleSetHomeMode(); // モードを解除
+        }
+    });
+
+    // 2. Aちゃんアイコン
     const aIconHtml = `
         <div class="custom-pin a-pin">
             <div class="custom-pin-content">A</div>
@@ -289,13 +334,50 @@ function initMap(){
 }
 
 /**
- * ★ボタンが押された（緊急情報を受信した）ときに呼び出す関数
+ * ★家の位置変更モードの切り替え関数
  */
-function triggerEmergency() {
-    // 画面全体（body）を真っ赤に変更
-    document.body.classList.add("emergency-mode");
+function toggleSetHomeMode() {
+    isSettingHome = !isSettingHome;
+    const btn = document.getElementById("changeHomeBtn");
+    const mapElement = document.getElementById("map");
 
-    // 距離・バッテリー欄の下にある警告パネルを表示
+    if (isSettingHome) {
+        btn.innerText = "📍 地図上をクリックしてください";
+        btn.classList.add("active");
+        mapElement.classList.add("selecting-home");
+    } else {
+        btn.innerText = "🏠 家の位置を変更";
+        btn.classList.remove("active");
+        mapElement.classList.remove("selecting-home");
+    }
+}
+
+/**
+ * ★新しい家の位置を設定・更新する処理
+ */
+function updateHomePosition(newLat, newLng) {
+    home.lat = newLat;
+    home.lng = newLng;
+
+    // 家のピンの位置を更新
+    if (homeMarker) {
+        homeMarker.setLatLng([newLat, newLng]);
+    }
+
+    // すでにAちゃんの座標がある場合、新しい家からの距離を即時再計算
+    if (lastCurrentPos) {
+        const distance = getDistance(
+            home.lat,
+            home.lng,
+            lastCurrentPos[0],
+            lastCurrentPos[1]
+        );
+        document.getElementById("distance").innerText = Math.round(distance) + " m";
+    }
+}
+
+function triggerEmergency() {
+    document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
     if (banner) {
         banner.style.display = "block";
@@ -352,6 +434,7 @@ function updateFromGGA(gga){
     const lat = nmeaToDecimal(d[2],d[3]);
     const lng = nmeaToDecimal(d[4],d[5]);
     const currentPos = [lat, lng];
+    lastCurrentPos = currentPos; // 最新位置を記憶
 
     if (gpsMarker) {
         gpsMarker.setLatLng(currentPos);
