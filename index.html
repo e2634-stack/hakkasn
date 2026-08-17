@@ -20,7 +20,7 @@ body{
     font-family: 'M PLUS Rounded 1c', sans-serif;
     color: #2B1C0B; /* 全体の文字色 */
     background:#FFF8EB;
-    transition: background-color 0.5s ease; /* 背景色変更を滑らかに */
+    transition: background-color 0.5s ease;
 }
 
 /* ★緊急事態モード（背景を赤へ） */
@@ -28,7 +28,6 @@ body.emergency-mode {
     background: #FF2E2E !important;
 }
 
-/* 両サイドの余白設定 */
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -37,56 +36,124 @@ body.emergency-mode {
     position: relative;
 }
 
-/* テスト用＆操作用ボタン配置エリア */
-.action-btn-wrapper {
+/* ヘッダーエリア（三本線ボタンとタイトルを並べる） */
+header {
     display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 10px;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 10px 0;
 }
 
-.action-btn {
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    font-size: 14px;
-    font-weight: bold;
-    border-radius: 20px;
+/* 三本線（ハンバーガー）ボタン */
+.menu-btn {
+    position: absolute;
+    left: 10px;
+    background: white;
+    border: 2px solid #2B1C0B;
+    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 8px;
+    box-sizing: border-box;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.menu-btn span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background-color: #2B1C0B;
+    border-radius: 2px;
+}
+
+/* サイドバー（スライドメニュー） */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px; /* 初期状態は画面外 */
+    width: 260px;
+    height: 100%;
+    background-color: #FFFFFF;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+    transition: left 0.3s ease;
+    z-index: 2000;
+    padding: 20px 15px;
+    box-sizing: border-box;
+}
+
+.sidebar.open {
+    left: 0; /* メニューオープン時 */
+}
+
+.sidebar-title {
+    font-size: 20px;
+    font-weight: bold;
+    border-bottom: 2px solid #FFF8EB;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.sidebar-btn {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-size: 15px;
+    font-weight: bold;
     font-family: 'M PLUS Rounded 1c', sans-serif;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     transition: all 0.2s ease;
 }
 
-.home-change-btn {
+.btn-home {
     background-color: #2e7d32;
+    color: white;
 }
 
-.home-change-btn:hover {
-    background-color: #1b5e20;
-}
-
-.home-change-btn.active {
+.btn-home.active {
     background-color: #e65100;
     animation: pulse-btn 1s infinite alternate;
 }
 
+.btn-emergency {
+    background-color: #D93025;
+    color: white;
+}
+
 @keyframes pulse-btn {
     0% { transform: scale(1); }
-    100% { transform: scale(1.05); }
+    100% { transform: scale(1.02); }
 }
 
-.test-btn {
-    background-color: #D93025;
+/* オーバーレイ（メニューが開いている時の背景の暗がり） */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: none;
+    z-index: 1500;
 }
 
-.test-btn:hover {
-    background-color: #B31412;
+.overlay.show {
+    display: block;
 }
 
 h1{
     text-align:center;
-    margin:10px;
+    margin: 0;
+    font-size: 24px;
     transition: color 0.5s ease;
 }
 
@@ -111,8 +178,8 @@ body.emergency-mode h1 {
     padding:15px;
     background:white;
     margin-top: 10px;
-    border: 2px solid #2B1C0B; /* 枠線を文字色と統一 */
-    border-radius: 12px;        /* 角丸で柔らかいデザインに */
+    border: 2px solid #2B1C0B;
+    border-radius: 12px;
 }
 
 .item{
@@ -136,9 +203,9 @@ body.emergency-mode h1 {
     color: #2B1C0B;
 }
 
-/* ★情報欄の下に表示する「緊急事態」パネル */
+/* 情報欄の下に表示する「緊急事態」パネル */
 #emergencyBanner {
-    display: none; /* 通常時は非表示 */
+    display: none;
     margin-top: 15px;
     padding: 20px;
     background-color: #D93025;
@@ -182,7 +249,6 @@ body.emergency-mode h1 {
     align-items: center;
 }
 
-/* HOMEピンのスタイル */
 .home-pin {
     background: #FFFFFF;
     border: 2px solid #2B1C0B;
@@ -194,7 +260,6 @@ body.emergency-mode h1 {
     object-fit: contain;
 }
 
-/* Aちゃんピンのスタイル */
 .a-pin {
     background: #4285F4;
     border: 2px solid #FFFFFF;
@@ -204,15 +269,27 @@ body.emergency-mode h1 {
 </head>
 <body>
 
-<div class="container">
-
-<!-- 操作ボタン配置エリア -->
-<div class="action-btn-wrapper">
-    <button id="changeHomeBtn" class="action-btn home-change-btn" onclick="toggleSetHomeMode()">🏠 家の位置を変更</button>
-    <button class="action-btn test-btn" onclick="triggerEmergency()">🚨 ボタン受信（緊急テスト）</button>
+<!-- サイドバー（スライドメニュー） -->
+<div id="sidebar" class="sidebar">
+    <div class="sidebar-title">メニュー</div>
+    <button id="changeHomeBtn" class="sidebar-btn btn-home" onclick="toggleSetHomeMode()">🏠 家の位置を変更</button>
+    <button class="sidebar-btn btn-emergency" onclick="triggerEmergency()">🚨 緊急テスト</button>
 </div>
 
-<h1>見守りMAP</h1>
+<!-- 暗転用オーバーレイ -->
+<div id="overlay" class="overlay" onclick="closeMenu()"></div>
+
+<div class="container">
+
+<header>
+    <!-- 三本線ボタン -->
+    <div class="menu-btn" onclick="toggleMenu()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+    <h1>見守りMAP</h1>
+</header>
 
 <div id="map"></div>
 
@@ -230,7 +307,7 @@ body.emergency-mode h1 {
 
 </div>
 
-<!-- 情報欄（#info）の下に緊急事態表示を追加 -->
+<!-- 情報欄（#info）の下の緊急事態メッセージ -->
 <div id="emergencyBanner">
     🚨 緊急事態発生 🚨
 </div>
@@ -243,12 +320,12 @@ body.emergency-mode h1 {
 <script>
 let map;
 let gpsMarker;
-let homeMarker; // HOMEマーカー用変数
+let homeMarker;
 let trackLine;
 const pathHistory = [];
 
-let isSettingHome = false; // 家の位置選択モードフラグ
-let lastCurrentPos = null; // 最新のAちゃんの位置を保持
+let isSettingHome = false;
+let lastCurrentPos = null;
 
 const eastRoutePoints = [
     { lat: 35.636667, lng: 139.881667 },
@@ -259,7 +336,6 @@ const eastRoutePoints = [
     { lat: 35.636682, lng: 139.881943 }
 ];
 
-// 初期設定の家の座標
 let home = {
     lat: 35.645000,
     lng: 139.891667
@@ -273,7 +349,6 @@ function initMap(){
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    // 1. 家アイコン
     const homeIconHtml = `
         <div class="custom-pin home-pin">
             <div class="custom-pin-content">
@@ -291,15 +366,14 @@ function initMap(){
 
     homeMarker = L.marker([home.lat, home.lng], { icon: homeIcon, title: "HOME" }).addTo(map);
 
-    // ★地図上をクリックした時に「家の位置を変更」する処理イベント
+    // 地図タップ時の家の位置変更処理
     map.on('click', function(e) {
         if (isSettingHome) {
             updateHomePosition(e.latlng.lat, e.latlng.lng);
-            toggleSetHomeMode(); // モードを解除
+            toggleSetHomeMode();
         }
     });
 
-    // 2. Aちゃんアイコン
     const aIconHtml = `
         <div class="custom-pin a-pin">
             <div class="custom-pin-content">A</div>
@@ -333,9 +407,20 @@ function initMap(){
     updateBattery(20);
 }
 
-/**
- * ★家の位置変更モードの切り替え関数
- */
+/* ★メニューの開閉処理 */
+function toggleMenu() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("overlay");
+    sidebar.classList.toggle("open");
+    overlay.classList.toggle("show");
+}
+
+function closeMenu() {
+    document.getElementById("sidebar").classList.remove("open");
+    document.getElementById("overlay").classList.remove("show");
+}
+
+/* ★家の位置変更モード切り替え */
 function toggleSetHomeMode() {
     isSettingHome = !isSettingHome;
     const btn = document.getElementById("changeHomeBtn");
@@ -350,21 +435,19 @@ function toggleSetHomeMode() {
         btn.classList.remove("active");
         mapElement.classList.remove("selecting-home");
     }
+    
+    // 操作を開始したらメニューを閉じる
+    closeMenu();
 }
 
-/**
- * ★新しい家の位置を設定・更新する処理
- */
 function updateHomePosition(newLat, newLng) {
     home.lat = newLat;
     home.lng = newLng;
 
-    // 家のピンの位置を更新
     if (homeMarker) {
         homeMarker.setLatLng([newLat, newLng]);
     }
 
-    // すでにAちゃんの座標がある場合、新しい家からの距離を即時再計算
     if (lastCurrentPos) {
         const distance = getDistance(
             home.lat,
@@ -376,12 +459,14 @@ function updateHomePosition(newLat, newLng) {
     }
 }
 
+/* ★緊急事態発動処理 */
 function triggerEmergency() {
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
     if (banner) {
         banner.style.display = "block";
     }
+    closeMenu(); // メニューを閉じる
 }
 
 function updateBattery(level){
@@ -434,7 +519,7 @@ function updateFromGGA(gga){
     const lat = nmeaToDecimal(d[2],d[3]);
     const lng = nmeaToDecimal(d[4],d[5]);
     const currentPos = [lat, lng];
-    lastCurrentPos = currentPos; // 最新位置を記憶
+    lastCurrentPos = currentPos;
 
     if (gpsMarker) {
         gpsMarker.setLatLng(currentPos);
