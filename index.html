@@ -18,12 +18,11 @@
 body{
     margin:0;
     font-family: 'M PLUS Rounded 1c', sans-serif;
-    color: #2B1C0B; /* 全体の文字色 */
+    color: #2B1C0B;
     background:#FFF8EB;
     transition: background-color 0.5s ease;
 }
 
-/* ★緊急事態モード（背景を赤へ） */
 body.emergency-mode {
     background: #FF2E2E !important;
 }
@@ -36,7 +35,6 @@ body.emergency-mode {
     position: relative;
 }
 
-/* ヘッダーエリア（三本線ボタンとタイトルを並べる） */
 header {
     display: flex;
     align-items: center;
@@ -45,7 +43,6 @@ header {
     padding: 10px 0;
 }
 
-/* 三本線（ハンバーガー）ボタン */
 .menu-btn {
     position: absolute;
     left: 10px;
@@ -72,11 +69,10 @@ header {
     border-radius: 2px;
 }
 
-/* サイドバー（スライドメニュー） */
 .sidebar {
     position: fixed;
     top: 0;
-    left: -280px; /* 初期状態は画面外 */
+    left: -280px;
     width: 260px;
     height: 100%;
     background-color: #FFFFFF;
@@ -88,7 +84,7 @@ header {
 }
 
 .sidebar.open {
-    left: 0; /* メニューオープン時 */
+    left: 0;
 }
 
 .sidebar-title {
@@ -129,12 +125,21 @@ header {
     color: white;
 }
 
+.btn-data {
+    background-color: #0288d1;
+    color: white;
+}
+
+.btn-clear {
+    background-color: #757575;
+    color: white;
+}
+
 @keyframes pulse-btn {
     0% { transform: scale(1); }
     100% { transform: scale(1.02); }
 }
 
-/* オーバーレイ（メニューが開いている時の背景の暗がり） */
 .overlay {
     position: fixed;
     top: 0;
@@ -166,7 +171,6 @@ body.emergency-mode h1 {
     height:70vh;
 }
 
-/* 地図クリック選択モード時のカーソル指定 */
 #map.selecting-home {
     cursor: crosshair !important;
 }
@@ -203,7 +207,6 @@ body.emergency-mode h1 {
     color: #2B1C0B;
 }
 
-/* 情報欄の下に表示する「緊急事態」パネル */
 #emergencyBanner {
     display: none;
     margin-top: 15px;
@@ -224,7 +227,6 @@ body.emergency-mode h1 {
     100% { transform: scale(1.02); opacity: 1; }
 }
 
-/* Leaflet用のカスタムマーカースタイル */
 .custom-pin {
     width: 32px;
     height: 32px;
@@ -269,20 +271,19 @@ body.emergency-mode h1 {
 </head>
 <body>
 
-<!-- サイドバー（スライドメニュー） -->
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
     <button id="changeHomeBtn" class="sidebar-btn btn-home" onclick="toggleSetHomeMode()">🏠 家の位置を変更</button>
+    <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 ログをダウンロード</button>
+    <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 ログを削除</button>
     <button class="sidebar-btn btn-emergency" onclick="triggerEmergency()">🚨 緊急テスト</button>
 </div>
 
-<!-- 暗転用オーバーレイ -->
 <div id="overlay" class="overlay" onclick="closeMenu()"></div>
 
 <div class="container">
 
 <header>
-    <!-- 三本線ボタン -->
     <div class="menu-btn" onclick="toggleMenu()">
         <span></span>
         <span></span>
@@ -294,7 +295,6 @@ body.emergency-mode h1 {
 <div id="map"></div>
 
 <div id="info">
-
     <div class="item">
         <div style="font-size:40px;">📏</div>
         <div id="distance">0 m</div>
@@ -304,17 +304,14 @@ body.emergency-mode h1 {
         <img id="batteryIcon" src="battry-high.png" alt="battery">
         <div id="battery">100%</div>
     </div>
-
 </div>
 
-<!-- 情報欄（#info）の下の緊急事態メッセージ -->
 <div id="emergencyBanner">
     🚨 緊急事態発生 🚨
 </div>
 
 </div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script>
@@ -336,7 +333,6 @@ const eastRoutePoints = [
     { lat: 35.636682, lng: 139.881943 }
 ];
 
-// ★【修正箇所 1】保存された家の位置情報を取得（なければデフォルト値を使用）
 const savedHome = JSON.parse(localStorage.getItem("homeLocation"));
 let home = savedHome || {
     lat: 35.645000,
@@ -368,7 +364,6 @@ function initMap(){
 
     homeMarker = L.marker([home.lat, home.lng], { icon: homeIcon, title: "HOME" }).addTo(map);
 
-    // 地図タップ時の家の位置変更処理
     map.on('click', function(e) {
         if (isSettingHome) {
             updateHomePosition(e.latlng.lat, e.latlng.lng);
@@ -409,7 +404,6 @@ function initMap(){
     updateBattery(20);
 }
 
-/* メニューの開閉処理 */
 function toggleMenu() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("overlay");
@@ -422,7 +416,6 @@ function closeMenu() {
     document.getElementById("overlay").classList.remove("show");
 }
 
-/* 家の位置変更モード切り替え */
 function toggleSetHomeMode() {
     isSettingHome = !isSettingHome;
     const btn = document.getElementById("changeHomeBtn");
@@ -437,8 +430,6 @@ function toggleSetHomeMode() {
         btn.classList.remove("active");
         mapElement.classList.remove("selecting-home");
     }
-    
-    // 操作を開始したらメニューを閉じる
     closeMenu();
 }
 
@@ -446,7 +437,6 @@ function updateHomePosition(newLat, newLng) {
     home.lat = newLat;
     home.lng = newLng;
 
-    // ★【修正箇所 2】新しい家の位置情報を localStorage に保存
     localStorage.setItem("homeLocation", JSON.stringify(home));
 
     if (homeMarker) {
@@ -464,14 +454,13 @@ function updateHomePosition(newLat, newLng) {
     }
 }
 
-/* 緊急事態発動処理 */
 function triggerEmergency() {
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
     if (banner) {
         banner.style.display = "block";
     }
-    closeMenu(); // メニューを閉じる
+    closeMenu();
 }
 
 function updateBattery(level){
@@ -517,6 +506,47 @@ function nmeaToDecimal(value,direction){
     return decimal;
 }
 
+/* ★ローカルストレージへの移動ログ保存関数 */
+function saveLocationToLocalStorage(lat, lng) {
+    const history = JSON.parse(localStorage.getItem("locationLogs") || "[]");
+    
+    // 現在時刻とともにログを追加
+    history.push({
+        timestamp: new Date().toISOString(),
+        lat: lat,
+        lng: lng
+    });
+
+    localStorage.setItem("locationLogs", JSON.stringify(history));
+}
+
+/* ★データのダウンロード（書き出し）機能 */
+function downloadLocationHistory() {
+    const history = localStorage.getItem("locationLogs");
+    if (!history || JSON.parse(history).length === 0) {
+        alert("保存された位置情報データがありません。");
+        return;
+    }
+
+    const blob = new Blob([history], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `location_history_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    closeMenu();
+}
+
+/* ★保存データのクリア機能 */
+function clearLocationHistory() {
+    if (confirm("保存された位置情報ログをすべて削除しますか？")) {
+        localStorage.removeItem("locationLogs");
+        alert("ログを削除しました。");
+    }
+    closeMenu();
+}
+
 function updateFromGGA(gga){
     const d = gga.split(",");
     if (d.length < 6) return;
@@ -525,6 +555,9 @@ function updateFromGGA(gga){
     const lng = nmeaToDecimal(d[4],d[5]);
     const currentPos = [lat, lng];
     lastCurrentPos = currentPos;
+
+    // 位置情報をブラウザに追加保存
+    saveLocationToLocalStorage(lat, lng);
 
     if (gpsMarker) {
         gpsMarker.setLatLng(currentPos);
