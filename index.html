@@ -81,6 +81,7 @@ header {
     z-index: 2000;
     padding: 20px 15px;
     box-sizing: border-box;
+    overflow-y: auto;
 }
 
 .sidebar.open {
@@ -110,9 +111,26 @@ header {
     transition: all 0.2s ease;
 }
 
+.sub-menu {
+    display: none;
+    padding-left: 10px;
+    margin-bottom: 10px;
+}
+
+.sub-menu.show {
+    display: block;
+}
+
 .btn-home {
     background-color: #2e7d32;
     color: white;
+}
+
+.btn-sub {
+    background-color: #4caf50;
+    color: white;
+    font-size: 13px;
+    padding: 10px;
 }
 
 .btn-home.active {
@@ -153,6 +171,66 @@ header {
 
 .overlay.show {
     display: block;
+}
+
+/* 住所入力モーダルのスタイル */
+.modal {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #2B1C0B;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    z-index: 3000;
+    width: 85%;
+    max-width: 400px;
+}
+
+.modal-title {
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 12px;
+    text-align: center;
+}
+
+.modal-input {
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    font-family: inherit;
+}
+
+.modal-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.modal-btns button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.modal-btn-search {
+    background: #0288d1;
+    color: white;
+}
+
+.modal-btn-cancel {
+    background: #757575;
+    color: white;
 }
 
 h1{
@@ -273,13 +351,30 @@ body.emergency-mode h1 {
 
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
-    <button id="changeHomeBtn" class="sidebar-btn btn-home" onclick="toggleSetHomeMode()">🏠 家の位置を変更</button>
+    
+    <!-- 家の位置変更（アコーディオン形式） -->
+    <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()">🏠 家の位置を変更</button>
+    <div id="homeSubMenu" class="sub-menu">
+        <button id="changeHomeBtn" class="sidebar-btn btn-sub" onclick="toggleSetHomeMode()">📍 地図上をタップ</button>
+        <button class="sidebar-btn btn-sub" onclick="openAddressModal()">🏠 住所を入力</button>
+    </div>
+
     <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 ログをダウンロード</button>
     <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 ログを削除</button>
     <button class="sidebar-btn btn-emergency" onclick="triggerEmergency()">🚨 緊急テスト</button>
 </div>
 
 <div id="overlay" class="overlay" onclick="closeMenu()"></div>
+
+<!-- 住所入力モーダル -->
+<div id="addressModal" class="modal">
+    <div class="modal-title">家の住所を入力</div>
+    <input type="text" id="addressInput" class="modal-input" placeholder="例: 東京都千代田区永田町1-7-1">
+    <div class="modal-btns">
+        <button class="modal-btn-search" onclick="searchAddress()">設定</button>
+        <button class="modal-btn-cancel" onclick="closeAddressModal()">キャンセル</button>
+    </div>
+</div>
 
 <div class="container">
 
@@ -414,23 +509,80 @@ function toggleMenu() {
 function closeMenu() {
     document.getElementById("sidebar").classList.remove("open");
     document.getElementById("overlay").classList.remove("show");
+    document.getElementById("homeSubMenu").classList.remove("show");
 }
 
+/* 「家の位置を変更」サブメニュー開閉 */
+function toggleHomeSubMenu() {
+    const subMenu = document.getElementById("homeSubMenu");
+    subMenu.classList.toggle("show");
+}
+
+/* 地図上タップによる選択モードの切り替え */
 function toggleSetHomeMode() {
     isSettingHome = !isSettingHome;
     const btn = document.getElementById("changeHomeBtn");
     const mapElement = document.getElementById("map");
 
     if (isSettingHome) {
-        btn.innerText = "📍 地図上をクリックしてください";
+        btn.innerText = "📍 地図上をクリック中...";
         btn.classList.add("active");
         mapElement.classList.add("selecting-home");
     } else {
-        btn.innerText = "🏠 家の位置を変更";
+        btn.innerText = "📍 地図上をタップ";
         btn.classList.remove("active");
         mapElement.classList.remove("selecting-home");
     }
     closeMenu();
+}
+
+/* 住所入力モーダルの表示・非表示 */
+function openAddressModal() {
+    closeMenu();
+    document.getElementById("addressModal").style.display = "block";
+    document.getElementById("overlay").classList.add("show");
+}
+
+function closeAddressModal() {
+    document.getElementById("addressModal").style.display = "none";
+    document.getElementById("overlay").classList.remove("show");
+    document.getElementById("addressInput").value = "";
+}
+
+/* 国土地理院 API を使って住所検索（ジオコーディング） */
+async function searchAddress() {
+    const address = document.getElementById("addressInput").value.trim();
+    if (!address) {
+        alert("住所を入力してください。");
+        return;
+    }
+
+    try {
+        const url = `https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(address)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+            // 国土地理院APIのレスポンス形式: [lng, lat]
+            const coords = data[0].geometry.coordinates;
+            const lng = coords[0];
+            const lat = coords[1];
+
+            // 家の位置を更新
+            updateHomePosition(lat, lng);
+
+            // 地図の表示領域を新しい家に移動する
+            map.setView([lat, lng], 18);
+
+            alert(`家の位置を更新しました:\n${data[0].properties.title}`);
+            closeAddressModal();
+        } else {
+            alert("該当する住所が見つかりませんでした。正確な住所を入力してください。");
+        }
+    } catch (error) {
+        console.error("住所検索エラー:", error);
+        alert("住所の検索中にエラーが発生しました。");
+    }
 }
 
 function updateHomePosition(newLat, newLng) {
@@ -506,11 +658,9 @@ function nmeaToDecimal(value,direction){
     return decimal;
 }
 
-/* ★ローカルストレージへの移動ログ保存関数 */
 function saveLocationToLocalStorage(lat, lng) {
     const history = JSON.parse(localStorage.getItem("locationLogs") || "[]");
     
-    // 現在時刻とともにログを追加
     history.push({
         timestamp: new Date().toISOString(),
         lat: lat,
@@ -520,7 +670,6 @@ function saveLocationToLocalStorage(lat, lng) {
     localStorage.setItem("locationLogs", JSON.stringify(history));
 }
 
-/* ★データのダウンロード（書き出し）機能 */
 function downloadLocationHistory() {
     const history = localStorage.getItem("locationLogs");
     if (!history || JSON.parse(history).length === 0) {
@@ -538,7 +687,6 @@ function downloadLocationHistory() {
     closeMenu();
 }
 
-/* ★保存データのクリア機能 */
 function clearLocationHistory() {
     if (confirm("保存された位置情報ログをすべて削除しますか？")) {
         localStorage.removeItem("locationLogs");
@@ -556,7 +704,6 @@ function updateFromGGA(gga){
     const currentPos = [lat, lng];
     lastCurrentPos = currentPos;
 
-    // 位置情報をブラウザに追加保存
     saveLocationToLocalStorage(lat, lng);
 
     if (gpsMarker) {
