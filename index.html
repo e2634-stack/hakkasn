@@ -371,8 +371,8 @@ body.emergency-mode h1 {
     <div class="modal-title">家の住所を入力</div>
     <input type="text" id="addressInput" class="modal-input" placeholder="例: 東京都千代田区永田町1-7-1">
     <div class="modal-btns">
-        <button class="modal-btn-search" onclick="searchAddress()">設定</button>
         <button class="modal-btn-cancel" onclick="closeAddressModal()">キャンセル</button>
+        <button class="modal-btn-search" onclick="searchAddress()">設定</button>
     </div>
 </div>
 
@@ -563,15 +563,11 @@ async function searchAddress() {
         const data = await response.json();
 
         if (data && data.length > 0) {
-            // 国土地理院APIのレスポンス形式: [lng, lat]
             const coords = data[0].geometry.coordinates;
             const lng = coords[0];
             const lat = coords[1];
 
-            // 家の位置を更新
             updateHomePosition(lat, lng);
-
-            // 地図の表示領域を新しい家に移動する
             map.setView([lat, lng], 18);
 
             alert(`家の位置を更新しました:\n${data[0].properties.title}`);
