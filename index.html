@@ -140,6 +140,11 @@ header {
     color: white;
 }
 
+.btn-delete-user {
+    background-color: #e53935;
+    color: white;
+}
+
 .btn-home {
     background-color: #2e7d32;
     color: white;
@@ -192,7 +197,6 @@ header {
     display: block;
 }
 
-/* モーダルの共通スタイル */
 .modal {
     display: none;
     position: fixed;
@@ -247,6 +251,11 @@ header {
     color: white;
 }
 
+.modal-btn-delete {
+    background: #e53935;
+    color: white;
+}
+
 .modal-btn-cancel {
     background: #757575;
     color: white;
@@ -265,7 +274,7 @@ body.emergency-mode h1 {
 
 #map{
     width:100%;
-    height:65vh;
+    height:60vh;
 }
 
 #map.selecting-home {
@@ -281,18 +290,19 @@ body.emergency-mode h1 {
 
 .info-card {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
     padding: 10px 15px;
     background: white;
     border: 2px solid #2B1C0B;
     border-radius: 12px;
+    position: relative;
 }
 
 .info-card .user-name {
     font-weight: bold;
     font-size: 16px;
-    min-width: 80px;
+    min-width: 70px;
 }
 
 .item{
@@ -314,6 +324,23 @@ body.emergency-mode h1 {
     font-size:16px;
     font-weight: bold;
     color: #2B1C0B;
+}
+
+.card-delete-btn {
+    background: #ffcdd2;
+    color: #c62828;
+    border: 1px solid #e57373;
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+.card-delete-btn:hover {
+    background: #ef9a9a;
 }
 
 #emergencyBanner {
@@ -400,6 +427,7 @@ body.emergency-mode h1 {
     
     <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ 見守り対象を追加</button>
     <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️ 名前の変更</button>
+    <button class="sidebar-btn btn-delete-user" onclick="openDeleteModal()">🗑 対象者を削除</button>
 
     <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 ログをダウンロード</button>
     <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 ログを削除</button>
@@ -446,6 +474,16 @@ body.emergency-mode h1 {
     </div>
 </div>
 
+<!-- 対象削除モーダル -->
+<div id="deleteModal" class="modal">
+    <div class="modal-title">見守り対象を削除</div>
+    <select id="userSelectForDelete" class="modal-select"></select>
+    <div class="modal-btns">
+        <button class="modal-btn-cancel" onclick="closeDeleteModal()">キャンセル</button>
+        <button class="modal-btn-delete" onclick="executeDeleteFromModal()">削除</button>
+    </div>
+</div>
+
 <div class="container">
 
 <header>
@@ -485,7 +523,7 @@ const routePoints1 = [
     { lat: 35.636682, lng: 139.881943 }
 ];
 
-// 2人目用（Aから少し離れた舞浜駅周辺のルートデータ）
+// 2人目用（舞浜駅周辺のルートデータ）
 const routePoints2 = [
     { lat: 35.637500, lng: 139.883500 },
     { lat: 35.637550, lng: 139.883550 },
@@ -494,7 +532,7 @@ const routePoints2 = [
     { lat: 35.637700, lng: 139.883700 }
 ];
 
-// 初期状態は「Aちゃん」のみ登録（Bちゃんはボタンから追加）
+// 初期状態は「Aちゃん」のみ登録
 let targets = JSON.parse(localStorage.getItem("mapTargets")) || [
     { id: 1, name: "Aちゃん", pinClass: "target-pin-1", color: "#4285F4", route: routePoints1, battery: 85 }
 ];
@@ -570,7 +608,6 @@ function startTargetTracking(target) {
         targetState[target.id].intervalId = intervalId;
     }
 
-    // 初回表示の即時反映
     const firstPoint = target.route[0];
     updateTargetLocation(target.id, firstPoint.lat, firstPoint.lng);
 }
@@ -623,13 +660,14 @@ function renderInfoCard(target) {
     card.innerHTML = `
         <div class="user-name" id="card-name-${target.id}">${target.name}</div>
         <div class="item">
-            <div style="font-size:24px;">📏</div>
+            <div style="font-size:20px;">📏</div>
             <div class="distance" id="dist-${target.id}">0 m</div>
         </div>
         <div class="item">
             <img src="${battIcon}" alt="battery">
             <div class="battery">${target.battery}%</div>
         </div>
+        <button class="card-delete-btn" onclick="removeUser(${target.id})">✕ 削除</button>
     `;
 }
 
@@ -668,7 +706,6 @@ function openAddUserModal() {
     document.getElementById("addUserModal").style.display = "block";
     document.getElementById("overlay").classList.add("show");
     
-    // デフォルトの入力ヒント（2人目の場合は「Bちゃん」を初期提示）
     const input = document.getElementById("newUserNameInput");
     if (targets.length === 1) {
         input.value = "Bちゃん";
@@ -692,7 +729,6 @@ function addNewUser() {
 
     const newId = Date.now();
     
-    // 2人目の追加時は用意された「離れたルート(routePoints2)」を優先使用
     let selectedRoute;
     if (targets.length === 1) {
         selectedRoute = routePoints2;
@@ -722,6 +758,70 @@ function addNewUser() {
 
     alert(`${name} さんを追加しました。`);
     closeAddUserModal();
+}
+
+/* 対象者削除機能 */
+function removeUser(id) {
+    const target = targets.find(t => t.id === id);
+    if (!target) return;
+
+    if (!confirm(`${target.name} さんを削除してもよろしいですか？`)) {
+        return;
+    }
+
+    // 定期更新タイマー停止
+    if (targetState[id] && targetState[id].intervalId) {
+        clearInterval(targetState[id].intervalId);
+    }
+
+    // 地図上のピンと線を削除
+    if (targetState[id]) {
+        if (targetState[id].marker) map.removeLayer(targetState[id].marker);
+        if (targetState[id].trackLine) map.removeLayer(targetState[id].trackLine);
+        delete targetState[id];
+    }
+
+    // カードの要素削除
+    const card = document.getElementById(`info-card-${id}`);
+    if (card) card.remove();
+
+    // データ配列とストレージから削除
+    targets = targets.filter(t => t.id !== id);
+    saveTargetsToStorage();
+}
+
+/* メニューからの削除モーダル開閉 */
+function openDeleteModal() {
+    closeMenu();
+    const select = document.getElementById("userSelectForDelete");
+    select.innerHTML = "";
+
+    if (targets.length === 0) {
+        alert("削除できる対象者がいません。");
+        return;
+    }
+
+    targets.forEach(target => {
+        const opt = document.createElement("option");
+        opt.value = target.id;
+        opt.innerText = target.name;
+        select.appendChild(opt);
+    });
+
+    document.getElementById("deleteModal").style.display = "block";
+    document.getElementById("overlay").classList.add("show");
+}
+
+function closeDeleteModal() {
+    document.getElementById("deleteModal").style.display = "none";
+    document.getElementById("overlay").classList.remove("show");
+}
+
+function executeDeleteFromModal() {
+    const select = document.getElementById("userSelectForDelete");
+    const targetId = parseInt(select.value, 10);
+    closeDeleteModal();
+    removeUser(targetId);
 }
 
 /* 名前の変更機能 */
