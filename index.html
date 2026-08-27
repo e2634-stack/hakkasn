@@ -130,6 +130,16 @@ header {
     display: block;
 }
 
+.btn-add-user {
+    background-color: #ff9800;
+    color: white;
+}
+
+.btn-rename {
+    background-color: #9c27b0;
+    color: white;
+}
+
 .btn-home {
     background-color: #2e7d32;
     color: white;
@@ -182,7 +192,7 @@ header {
     display: block;
 }
 
-/* 住所入力モーダルのスタイル */
+/* モーダルの共通スタイル */
 .modal {
     display: none;
     position: fixed;
@@ -206,7 +216,7 @@ header {
     text-align: center;
 }
 
-.modal-input {
+.modal-input, .modal-select {
     width: 100%;
     padding: 10px;
     font-size: 14px;
@@ -255,22 +265,34 @@ body.emergency-mode h1 {
 
 #map{
     width:100%;
-    height:70vh;
+    height:65vh;
 }
 
 #map.selecting-home {
     cursor: crosshair !important;
 }
 
-#info{
-    display:flex;
-    justify-content:space-around;
-    align-items:center;
-    padding:15px;
-    background:white;
+#info-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     margin-top: 10px;
+}
+
+.info-card {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 15px;
+    background: white;
     border: 2px solid #2B1C0B;
     border-radius: 12px;
+}
+
+.info-card .user-name {
+    font-weight: bold;
+    font-size: 16px;
+    min-width: 80px;
 }
 
 .item{
@@ -278,18 +300,18 @@ body.emergency-mode h1 {
 }
 
 .item img{
-    width:60px;
+    width:35px;
     height:auto;
 }
 
-#distance{
-    font-size:24px;
+.distance{
+    font-size:18px;
     font-weight: bold;
     color: #2B1C0B;
 }
 
-#battery{
-    font-size:20px;
+.battery{
+    font-size:16px;
     font-weight: bold;
     color: #2B1C0B;
 }
@@ -332,10 +354,13 @@ body.emergency-mode h1 {
 .custom-pin-content {
     transform: rotate(45deg);
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
     display: flex;
     justify-content: center;
     align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 28px;
 }
 
 .home-pin {
@@ -349,8 +374,20 @@ body.emergency-mode h1 {
     object-fit: contain;
 }
 
-.a-pin {
+.target-pin-1 {
     background: #4285F4;
+    border: 2px solid #FFFFFF;
+    color: #FFFFFF;
+}
+
+.target-pin-2 {
+    background: #E91E63;
+    border: 2px solid #FFFFFF;
+    color: #FFFFFF;
+}
+
+.target-pin-default {
+    background: #9C27B0;
     border: 2px solid #FFFFFF;
     color: #FFFFFF;
 }
@@ -361,11 +398,14 @@ body.emergency-mode h1 {
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
     
+    <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ 見守り対象を追加</button>
+    <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️ 名前の変更</button>
+
     <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 ログをダウンロード</button>
     <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 ログを削除</button>
     <button class="sidebar-btn btn-emergency" onclick="triggerEmergency()">🚨 緊急テスト</button>
 
-    <!-- 家の位置変更（緊急テストボタンの下に移動） -->
+    <!-- 家の位置変更 -->
     <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()">🏠 家の位置を変更</button>
     <div id="homeSubMenu" class="sub-menu">
         <button id="changeHomeBtn" class="sidebar-btn btn-sub" onclick="toggleSetHomeMode()">📍 地図上をタップ</button>
@@ -385,6 +425,27 @@ body.emergency-mode h1 {
     </div>
 </div>
 
+<!-- 対象追加モーダル -->
+<div id="addUserModal" class="modal">
+    <div class="modal-title">新しい見守り対象を追加</div>
+    <input type="text" id="newUserNameInput" class="modal-input" placeholder="例: Bちゃん">
+    <div class="modal-btns">
+        <button class="modal-btn-cancel" onclick="closeAddUserModal()">キャンセル</button>
+        <button class="modal-btn-search" onclick="addNewUser()">追加</button>
+    </div>
+</div>
+
+<!-- 名前変更モーダル -->
+<div id="renameModal" class="modal">
+    <div class="modal-title">対象者の名前を変更</div>
+    <select id="userSelectForRename" class="modal-select"></select>
+    <input type="text" id="renameInput" class="modal-input" placeholder="新しい名前を入力">
+    <div class="modal-btns">
+        <button class="modal-btn-cancel" onclick="closeRenameModal()">キャンセル</button>
+        <button class="modal-btn-search" onclick="saveNewName()">保存</button>
+    </div>
+</div>
+
 <div class="container">
 
 <header>
@@ -398,17 +459,8 @@ body.emergency-mode h1 {
 
 <div id="map"></div>
 
-<div id="info">
-    <div class="item">
-        <div style="font-size:40px;">📏</div>
-        <div id="distance">0 m</div>
-    </div>
-
-    <div class="item">
-        <img id="batteryIcon" src="battry-high.png" alt="battery">
-        <div id="battery">100%</div>
-    </div>
-</div>
+<!-- 複数人分のステータス領域 -->
+<div id="info-container"></div>
 
 <div id="emergencyBanner">
     🚨 緊急事態発生 🚨
@@ -420,15 +472,11 @@ body.emergency-mode h1 {
 
 <script>
 let map;
-let gpsMarker;
 let homeMarker;
-let trackLine;
-const pathHistory = [];
-
 let isSettingHome = false;
-let lastCurrentPos = null;
 
-const eastRoutePoints = [
+// 1人目 (Aちゃん) のルート（ディズニーシー周辺）
+const routePoints1 = [
     { lat: 35.636667, lng: 139.881667 },
     { lat: 35.636670, lng: 139.881722 },
     { lat: 35.636673, lng: 139.881777 },
@@ -437,6 +485,24 @@ const eastRoutePoints = [
     { lat: 35.636682, lng: 139.881943 }
 ];
 
+// 2人目 (Bちゃん) のルート（舞浜駅北側周辺・Aから少し離れた位置）
+const routePoints2 = [
+    { lat: 35.637500, lng: 139.883500 },
+    { lat: 35.637550, lng: 139.883550 },
+    { lat: 35.637600, lng: 139.883600 },
+    { lat: 35.637650, lng: 139.883650 },
+    { lat: 35.637700, lng: 139.883700 }
+];
+
+// 対象者データ管理
+let targets = JSON.parse(localStorage.getItem("mapTargets")) || [
+    { id: 1, name: "Aちゃん", pinClass: "target-pin-1", color: "#4285F4", route: routePoints1, battery: 85 },
+    { id: 2, name: "Bちゃん", pinClass: "target-pin-2", color: "#E91E63", route: routePoints2, battery: 60 }
+];
+
+// 対象者の作業領域（Leaflet用インスタンス等）
+const targetState = {};
+
 const savedHome = JSON.parse(localStorage.getItem("homeLocation"));
 let home = savedHome || {
     lat: 35.645000,
@@ -444,7 +510,7 @@ let home = savedHome || {
 };
 
 function initMap(){
-    map = L.map('map').setView([eastRoutePoints[0].lat, eastRoutePoints[0].lng], 19);
+    map = L.map('map').setView([routePoints1[0].lat, routePoints1[0].lng], 16);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -475,38 +541,23 @@ function initMap(){
         }
     });
 
-    const aIconHtml = `
-        <div class="custom-pin a-pin">
-            <div class="custom-pin-content">A</div>
-        </div>
-    `;
-
-    const aIcon = L.divIcon({
-        className: '',
-        html: aIconHtml,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32]
+    // 初期化: 各対象者の初期ピン・移動線の準備と情報パネル生成
+    targets.forEach(target => {
+        setupTargetOnMap(target);
     });
 
-    gpsMarker = L.marker([eastRoutePoints[0].lat, eastRoutePoints[0].lng], { icon: aIcon, title: "Aちゃん" }).addTo(map);
+    // 各対象者の定期更新タイマーを設定
+    targets.forEach(target => {
+        let index = 0;
+        function step() {
+            const point = target.route[index % target.route.length];
+            updateTargetLocation(target.id, point.lat, point.lng);
+            index++;
+        }
+        step();
+        setInterval(step, 5000);
+    });
 
-    trackLine = L.polyline([], { color: '#4285F4', weight: 5, opacity: 0.7 }).addTo(map);
-
-    let currentIndex = 0;
-    
-    function sendNextCoordinate() {
-        const point = eastRoutePoints[currentIndex];
-        const ggaSentence = decimalToNMEA(point.lat, point.lng);
-        updateFromGGA(ggaSentence);
-
-        currentIndex = (currentIndex + 1) % eastRoutePoints.length;
-    }
-
-    sendNextCoordinate();
-    setInterval(sendNextCoordinate, 5000);
-
-    updateBattery(20);
-    
     // Service Worker の登録
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js')
@@ -514,10 +565,209 @@ function initMap(){
             .catch((err) => console.error('Service Worker 登録失敗:', err));
     }
 
-    // 起動時に通知権限をリクエスト
     requestNotificationPermission();
 }
 
+/* 対象者のLeaflet要素＆UI作成 */
+function setupTargetOnMap(target) {
+    const pinHtml = `
+        <div class="custom-pin ${target.pinClass || 'target-pin-default'}">
+            <div class="custom-pin-content" id="pin-label-${target.id}">${target.name.substring(0, 2)}</div>
+        </div>
+    `;
+
+    const pinIcon = L.divIcon({
+        className: '',
+        html: pinHtml,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
+    });
+
+    const initialPoint = target.route ? target.route[0] : { lat: home.lat, lng: home.lng };
+    const marker = L.marker([initialPoint.lat, initialPoint.lng], { icon: pinIcon, title: target.name }).addTo(map);
+    const trackLine = L.polyline([], { color: target.color || '#9C27B0', weight: 5, opacity: 0.7 }).addTo(map);
+
+    targetState[target.id] = {
+        marker: marker,
+        trackLine: trackLine,
+        pathHistory: [],
+        lastPos: [initialPoint.lat, initialPoint.lng]
+    };
+
+    renderInfoCard(target);
+}
+
+/* 情報カード表示（複数対応） */
+function renderInfoCard(target) {
+    const container = document.getElementById("info-container");
+    let card = document.getElementById(`info-card-${target.id}`);
+
+    if (!card) {
+        card = document.createElement("div");
+        card.id = `info-card-${target.id}`;
+        card.className = "info-card";
+        container.appendChild(card);
+    }
+
+    let battIcon = "battry-high.png";
+    if (target.battery <= 20) battIcon = "battry-low.png";
+    else if (target.battery <= 65) battIcon = "battry-mdium.png";
+
+    card.innerHTML = `
+        <div class="user-name" id="card-name-${target.id}">${target.name}</div>
+        <div class="item">
+            <div style="font-size:24px;">📏</div>
+            <div class="distance" id="dist-${target.id}">0 m</div>
+        </div>
+        <div class="item">
+            <img src="${battIcon}" alt="battery">
+            <div class="battery">${target.battery}%</div>
+        </div>
+    `;
+}
+
+/* 対象者の位置変更の反映 */
+function updateTargetLocation(id, lat, lng) {
+    const state = targetState[id];
+    if (!state) return;
+
+    const currentPos = [lat, lng];
+    state.lastPos = currentPos;
+
+    state.marker.setLatLng(currentPos);
+    
+    state.pathHistory.push(currentPos);
+    if (state.pathHistory.length > 5) {
+        state.pathHistory.shift();
+    }
+    state.trackLine.setLatLngs(state.pathHistory);
+
+    const dist = getDistance(home.lat, home.lng, lat, lng);
+    const distEl = document.getElementById(`dist-${id}`);
+    if (distEl) {
+        distEl.innerText = Math.round(dist) + " m";
+    }
+
+    saveLocationToLocalStorage(id, lat, lng);
+}
+
+/* LocalStorage 保存 */
+function saveTargetsToStorage() {
+    localStorage.setItem("mapTargets", JSON.stringify(targets));
+}
+
+/* 対象者の新規追加機能 */
+function openAddUserModal() {
+    closeMenu();
+    document.getElementById("addUserModal").style.display = "block";
+    document.getElementById("overlay").classList.add("show");
+}
+
+function closeAddUserModal() {
+    document.getElementById("addUserModal").style.display = "none";
+    document.getElementById("overlay").classList.remove("show");
+    document.getElementById("newUserNameInput").value = "";
+}
+
+function addNewUser() {
+    const name = document.getElementById("newUserNameInput").value.trim();
+    if (!name) {
+        alert("名前を入力してください。");
+        return;
+    }
+
+    const newId = Date.now();
+    // A/Bから少し離れたデフォルトの仮想ルートを作成
+    const baseLat = 35.638000 + (targets.length * 0.001);
+    const baseLng = 139.885000 + (targets.length * 0.001);
+
+    const newRoute = [
+        { lat: baseLat, lng: baseLng },
+        { lat: baseLat + 0.0001, lng: baseLng + 0.0001 },
+        { lat: baseLat + 0.0002, lng: baseLng + 0.0002 }
+    ];
+
+    const newTarget = {
+        id: newId,
+        name: name,
+        pinClass: "target-pin-default",
+        color: "#9C27B0",
+        route: newRoute,
+        battery: 100
+    };
+
+    targets.push(newTarget);
+    saveTargetsToStorage();
+
+    setupTargetOnMap(newTarget);
+
+    let index = 0;
+    setInterval(() => {
+        const point = newTarget.route[index % newTarget.route.length];
+        updateTargetLocation(newTarget.id, point.lat, point.lng);
+        index++;
+    }, 5000);
+
+    alert(`${name} さんを追加しました。`);
+    closeAddUserModal();
+}
+
+/* 名前の変更機能 */
+function openRenameModal() {
+    closeMenu();
+    const select = document.getElementById("userSelectForRename");
+    select.innerHTML = "";
+
+    targets.forEach(target => {
+        const opt = document.createElement("option");
+        opt.value = target.id;
+        opt.innerText = target.name;
+        select.appendChild(opt);
+    });
+
+    document.getElementById("renameInput").value = "";
+    document.getElementById("renameModal").style.display = "block";
+    document.getElementById("overlay").classList.add("show");
+}
+
+function closeRenameModal() {
+    document.getElementById("renameModal").style.display = "none";
+    document.getElementById("overlay").classList.remove("show");
+}
+
+function saveNewName() {
+    const select = document.getElementById("userSelectForRename");
+    const targetId = parseInt(select.value, 10);
+    const newName = document.getElementById("renameInput").value.trim();
+
+    if (!newName) {
+        alert("新しい名前を入力してください。");
+        return;
+    }
+
+    const target = targets.find(t => t.id === targetId);
+    if (target) {
+        target.name = newName;
+        saveTargetsToStorage();
+
+        // ピン上の名前省略表記更新
+        const pinLabel = document.getElementById(`pin-label-${targetId}`);
+        if (pinLabel) {
+            pinLabel.innerText = newName.substring(0, 2);
+        }
+
+        // カード上の表示名更新
+        const cardName = document.getElementById(`card-name-${targetId}`);
+        if (cardName) {
+            cardName.innerText = newName;
+        }
+
+        alert("名前を更新しました。");
+        closeRenameModal();
+    }
+}
+
+/* メニュー・モーダル共通処理 */
 function toggleMenu() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("overlay");
@@ -531,13 +781,10 @@ function closeMenu() {
     document.getElementById("homeSubMenu").classList.remove("show");
 }
 
-/* 「家の位置を変更」サブメニュー開閉 */
 function toggleHomeSubMenu() {
-    const subMenu = document.getElementById("homeSubMenu");
-    subMenu.classList.toggle("show");
+    document.getElementById("homeSubMenu").classList.toggle("show");
 }
 
-/* 地図上タップによる選択モードの切り替え */
 function toggleSetHomeMode() {
     isSettingHome = !isSettingHome;
     const btn = document.getElementById("changeHomeBtn");
@@ -555,7 +802,6 @@ function toggleSetHomeMode() {
     closeMenu();
 }
 
-/* 住所入力モーダルの表示・非表示 */
 function openAddressModal() {
     closeMenu();
     document.getElementById("addressModal").style.display = "block";
@@ -568,7 +814,6 @@ function closeAddressModal() {
     document.getElementById("addressInput").value = "";
 }
 
-/* 国土地理院 API を使って住所検索（ジオコーディング） */
 async function searchAddress() {
     const address = document.getElementById("addressInput").value.trim();
     if (!address) {
@@ -583,16 +828,12 @@ async function searchAddress() {
 
         if (data && data.length > 0) {
             const coords = data[0].geometry.coordinates;
-            const lng = coords[0];
-            const lat = coords[1];
-
-            updateHomePosition(lat, lng);
-            map.setView([lat, lng], 18);
-
+            updateHomePosition(coords[1], coords[0]);
+            map.setView([coords[1], coords[0]], 18);
             alert(`家の位置を更新しました:\n${data[0].properties.title}`);
             closeAddressModal();
         } else {
-            alert("該当する住所が見つかりませんでした。正確な住所を入力してください。");
+            alert("該当する住所が見つかりませんでした。");
         }
     } catch (error) {
         console.error("住所検索エラー:", error);
@@ -603,25 +844,20 @@ async function searchAddress() {
 function updateHomePosition(newLat, newLng) {
     home.lat = newLat;
     home.lng = newLng;
-
     localStorage.setItem("homeLocation", JSON.stringify(home));
 
-    if (homeMarker) {
-        homeMarker.setLatLng([newLat, newLng]);
-    }
+    if (homeMarker) homeMarker.setLatLng([newLat, newLng]);
 
-    if (lastCurrentPos) {
-        const distance = getDistance(
-            home.lat,
-            home.lng,
-            lastCurrentPos[0],
-            lastCurrentPos[1]
-        );
-        document.getElementById("distance").innerText = Math.round(distance) + " m";
-    }
+    targets.forEach(t => {
+        const st = targetState[t.id];
+        if (st && st.lastPos) {
+            const dist = getDistance(home.lat, home.lng, st.lastPos[0], st.lastPos[1]);
+            const distEl = document.getElementById(`dist-${t.id}`);
+            if (distEl) distEl.innerText = Math.round(dist) + " m";
+        }
+    });
 }
 
-/* プッシュ通知の権限リクエスト */
 function requestNotificationPermission() {
     if ("Notification" in window) {
         if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -630,103 +866,43 @@ function requestNotificationPermission() {
     }
 }
 
-/* 緊急テスト実行時の処理 */
 function triggerEmergency() {
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
-    if (banner) {
-        banner.style.display = "block";
-    }
-    
-    // プッシュ通知を送信
+    if (banner) banner.style.display = "block";
     sendEmergencyNotification();
-
     closeMenu();
 }
 
-/* 通知を送信する関数 */
 function sendEmergencyNotification() {
-    if (!("Notification" in window)) {
-        alert("お使いのブラウザは通知機能に対応していません。");
-        return;
-    }
+    if (!("Notification" in window)) return;
 
     if (Notification.permission === "granted") {
         showNotification();
     } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(permission => {
-            if (permission === "granted") {
-                showNotification();
-            }
+        Notification.requestPermission().then(p => {
+            if (p === "granted") showNotification();
         });
     }
 }
 
-/* 実際の通知を発行する関数 */
 function showNotification() {
-    const title = "🚨 緊急事態発生！";
-    const options = {
+    new Notification("🚨 緊急事態発生！", {
         body: "見守り対象者のSOSボタンが押されたか、緊急イベントが発生しました。",
         icon: "home.png",
         vibrate: [200, 100, 200, 100, 200],
         requireInteraction: true
-    };
-
-    new Notification(title, options);
+    });
 }
 
-function updateBattery(level){
-    document.getElementById("battery").innerText = level + "%";
-
-    const icon = document.getElementById("batteryIcon");
-    if(!icon) return;
-
-    if(level >= 66){
-        icon.src = "battry-high.png";
-    }else if(level >= 21){
-        icon.src = "battry-mdium.png";
-    }else{
-        icon.src = "battry-low.png";
-    }
-}
-
-function decimalToNMEA(lat, lng) {
-    const latAbs = Math.abs(lat);
-    const latDeg = Math.floor(latAbs);
-    const latMin = (latAbs - latDeg) * 60;
-    const latDir = lat >= 0 ? "N" : "S";
-    const latStr = String(latDeg).padStart(2, '0') + latMin.toFixed(4).padStart(7, '0');
-
-    const lngAbs = Math.abs(lng);
-    const lngDeg = Math.floor(lngAbs);
-    const lngMin = (lngAbs - lngDeg) * 60;
-    const lngDir = lng >= 0 ? "E" : "W";
-    const lngStr = String(lngDeg).padStart(3, '0') + lngMin.toFixed(4).padStart(7, '0');
-
-    return `$GNGGA,000000.00,${latStr},${latDir},${lngStr},${lngDir},1,12,0.8,0.0,M,0.0,M,,`;
-}
-
-function nmeaToDecimal(value,direction){
-    const degLength = (direction==="N" || direction==="S") ? 2 : 3;
-    const degrees = parseFloat(value.substring(0,degLength));
-    const minutes = parseFloat(value.substring(degLength));
-
-    let decimal = degrees + minutes/60;
-    if(direction==="S" || direction==="W"){
-        decimal *= -1;
-    }
-    return decimal;
-}
-
-function saveLocationToLocalStorage(lat, lng) {
+function saveLocationToLocalStorage(id, lat, lng) {
     const history = JSON.parse(localStorage.getItem("locationLogs") || "[]");
-    
     history.push({
+        userId: id,
         timestamp: new Date().toISOString(),
         lat: lat,
         lng: lng
     });
-
     localStorage.setItem("locationLogs", JSON.stringify(history));
 }
 
@@ -736,7 +912,6 @@ function downloadLocationHistory() {
         alert("保存された位置情報データがありません。");
         return;
     }
-
     const blob = new Blob([history], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -755,73 +930,14 @@ function clearLocationHistory() {
     closeMenu();
 }
 
-function updateFromGGA(gga){
-    const d = gga.split(",");
-    if (d.length < 6) return;
-
-    const lat = nmeaToDecimal(d[2],d[3]);
-    const lng = nmeaToDecimal(d[4],d[5]);
-    const currentPos = [lat, lng];
-    lastCurrentPos = currentPos;
-
-    saveLocationToLocalStorage(lat, lng);
-
-    if (gpsMarker) {
-        gpsMarker.setLatLng(currentPos);
-    }
-
-    if (map) {
-        map.panTo(currentPos);
-    }
-
-    pathHistory.push(currentPos);
-
-    let totalDist = 0;
-    let keepIndex = pathHistory.length - 1;
-
-    for (let i = pathHistory.length - 1; i > 0; i--) {
-        const p1 = pathHistory[i];
-        const p2 = pathHistory[i - 1];
-        const segDist = getDistance(p1[0], p1[1], p2[0], p2[1]);
-        
-        if (totalDist + segDist > 20) {
-            break;
-        }
-        totalDist += segDist;
-        keepIndex = i - 1;
-    }
-
-    if (keepIndex > 0) {
-        pathHistory.splice(0, keepIndex);
-    }
-
-    if (trackLine) {
-        trackLine.setLatLngs(pathHistory);
-    }
-
-    const distance = getDistance(
-        home.lat,
-        home.lng,
-        lat,
-        lng
-    );
-
-    document.getElementById("distance").innerText = Math.round(distance) + " m";
-}
-
-function getDistance(lat1,lon1,lat2,lon2){
+function getDistance(lat1, lon1, lat2, lon2){
     const R = 6371000;
     const dLat = (lat2-lat1)*Math.PI/180;
     const dLon = (lon2-lon1)*Math.PI/180;
-
-    const a =
-        Math.sin(dLat/2)*Math.sin(dLat/2) +
-        Math.cos(lat1*Math.PI/180) *
-        Math.cos(lat2*Math.PI/180) *
-        Math.sin(dLon/2)*Math.sin(dLon/2);
-
-    const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R*c;
+    const a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+              Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+              Math.sin(dLon/2)*Math.sin(dLon/2);
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
 }
 
 window.onload = initMap;
