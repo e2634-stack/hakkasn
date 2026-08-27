@@ -497,6 +497,9 @@ function initMap(){
     setInterval(sendNextCoordinate, 5000);
 
     updateBattery(20);
+    
+    // 起動時に通知権限をリクエスト
+    requestNotificationPermission();
 }
 
 function toggleMenu() {
@@ -602,13 +605,58 @@ function updateHomePosition(newLat, newLng) {
     }
 }
 
+/* プッシュ通知の権限リクエスト */
+function requestNotificationPermission() {
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+}
+
+/* 緊急テスト実行時の処理 */
 function triggerEmergency() {
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
     if (banner) {
         banner.style.display = "block";
     }
+    
+    // プッシュ通知を送信
+    sendEmergencyNotification();
+
     closeMenu();
+}
+
+/* 通知を送信する関数 */
+function sendEmergencyNotification() {
+    if (!("Notification" in window)) {
+        alert("お使いのブラウザは通知機能に対応していません。");
+        return;
+    }
+
+    if (Notification.permission === "granted") {
+        showNotification();
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                showNotification();
+            }
+        });
+    }
+}
+
+/* 実際の通知を発行する関数 */
+function showNotification() {
+    const title = "🚨 緊急事態発生！";
+    const options = {
+        body: "見守り対象者のSOSボタンが押されたか、緊急イベントが発生しました。",
+        icon: "home.png",
+        vibrate: [200, 100, 200, 100, 200],
+        requireInteraction: true
+    };
+
+    new Notification(title, options);
 }
 
 function updateBattery(level){
