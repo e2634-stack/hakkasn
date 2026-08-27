@@ -485,7 +485,7 @@ const routePoints1 = [
     { lat: 35.636682, lng: 139.881943 }
 ];
 
-// 2人目 (Bちゃん) のルート（舞浜駅北側周辺・Aから少し離れた位置）
+// 2人目用（Aから少し離れた舞浜駅周辺のルートデータ）
 const routePoints2 = [
     { lat: 35.637500, lng: 139.883500 },
     { lat: 35.637550, lng: 139.883550 },
@@ -494,13 +494,12 @@ const routePoints2 = [
     { lat: 35.637700, lng: 139.883700 }
 ];
 
-// 対象者データ管理
+// 初期状態は「Aちゃん」のみ登録（Bちゃんはボタンから追加）
 let targets = JSON.parse(localStorage.getItem("mapTargets")) || [
-    { id: 1, name: "Aちゃん", pinClass: "target-pin-1", color: "#4285F4", route: routePoints1, battery: 85 },
-    { id: 2, name: "Bちゃん", pinClass: "target-pin-2", color: "#E91E63", route: routePoints2, battery: 60 }
+    { id: 1, name: "Aちゃん", pinClass: "target-pin-1", color: "#4285F4", route: routePoints1, battery: 85 }
 ];
 
-// 対象者の作業領域（Leaflet用インスタンス等）
+// 各対象者の描画・アニメーション管理用オブジェクト
 const targetState = {};
 
 const savedHome = JSON.parse(localStorage.getItem("homeLocation"));
@@ -541,21 +540,9 @@ function initMap(){
         }
     });
 
-    // 初期化: 各対象者の初期ピン・移動線の準備と情報パネル生成
+    // 保存されている対象者を地図に追加・タイマー起動
     targets.forEach(target => {
-        setupTargetOnMap(target);
-    });
-
-    // 各対象者の定期更新タイマーを設定
-    targets.forEach(target => {
-        let index = 0;
-        function step() {
-            const point = target.route[index % target.route.length];
-            updateTargetLocation(target.id, point.lat, point.lng);
-            index++;
-        }
-        step();
-        setInterval(step, 5000);
+        startTargetTracking(target);
     });
 
     // Service Worker の登録
@@ -568,7 +555,27 @@ function initMap(){
     requestNotificationPermission();
 }
 
-/* 対象者のLeaflet要素＆UI作成 */
+/* 対象者のLeaflet要素作成とタイマー設定 */
+function startTargetTracking(target) {
+    setupTargetOnMap(target);
+
+    let index = 0;
+    const intervalId = setInterval(() => {
+        const point = target.route[index % target.route.length];
+        updateTargetLocation(target.id, point.lat, point.lng);
+        index++;
+    }, 5000);
+
+    if (targetState[target.id]) {
+        targetState[target.id].intervalId = intervalId;
+    }
+
+    // 初回表示の即時反映
+    const firstPoint = target.route[0];
+    updateTargetLocation(target.id, firstPoint.lat, firstPoint.lng);
+}
+
+/* 地図上のピンと描画要素のセットアップ */
 function setupTargetOnMap(target) {
     const pinHtml = `
         <div class="custom-pin ${target.pinClass || 'target-pin-default'}">
@@ -597,7 +604,7 @@ function setupTargetOnMap(target) {
     renderInfoCard(target);
 }
 
-/* 情報カード表示（複数対応） */
+/* 情報カード表示 */
 function renderInfoCard(target) {
     const container = document.getElementById("info-container");
     let card = document.getElementById(`info-card-${target.id}`);
@@ -626,7 +633,7 @@ function renderInfoCard(target) {
     `;
 }
 
-/* 対象者の位置変更の反映 */
+/* 対象者の位置更新 */
 function updateTargetLocation(id, lat, lng) {
     const state = targetState[id];
     if (!state) return;
@@ -651,7 +658,6 @@ function updateTargetLocation(id, lat, lng) {
     saveLocationToLocalStorage(id, lat, lng);
 }
 
-/* LocalStorage 保存 */
 function saveTargetsToStorage() {
     localStorage.setItem("mapTargets", JSON.stringify(targets));
 }
@@ -661,6 +667,14 @@ function openAddUserModal() {
     closeMenu();
     document.getElementById("addUserModal").style.display = "block";
     document.getElementById("overlay").classList.add("show");
+    
+    // デフォルトの入力ヒント（2人目の場合は「Bちゃん」を初期提示）
+    const input = document.getElementById("newUserNameInput");
+    if (targets.length === 1) {
+        input.value = "Bちゃん";
+    } else {
+        input.value = "";
+    }
 }
 
 function closeAddUserModal() {
@@ -677,36 +691,34 @@ function addNewUser() {
     }
 
     const newId = Date.now();
-    // A/Bから少し離れたデフォルトの仮想ルートを作成
-    const baseLat = 35.638000 + (targets.length * 0.001);
-    const baseLng = 139.885000 + (targets.length * 0.001);
-
-    const newRoute = [
-        { lat: baseLat, lng: baseLng },
-        { lat: baseLat + 0.0001, lng: baseLng + 0.0001 },
-        { lat: baseLat + 0.0002, lng: baseLng + 0.0002 }
-    ];
+    
+    // 2人目の追加時は用意された「離れたルート(routePoints2)」を優先使用
+    let selectedRoute;
+    if (targets.length === 1) {
+        selectedRoute = routePoints2;
+    } else {
+        const baseLat = 35.638000 + (targets.length * 0.001);
+        const baseLng = 139.885000 + (targets.length * 0.001);
+        selectedRoute = [
+            { lat: baseLat, lng: baseLng },
+            { lat: baseLat + 0.0001, lng: baseLng + 0.0001 },
+            { lat: baseLat + 0.0002, lng: baseLng + 0.0002 }
+        ];
+    }
 
     const newTarget = {
         id: newId,
         name: name,
-        pinClass: "target-pin-default",
-        color: "#9C27B0",
-        route: newRoute,
-        battery: 100
+        pinClass: targets.length === 1 ? "target-pin-2" : "target-pin-default",
+        color: targets.length === 1 ? "#E91E63" : "#9C27B0",
+        route: selectedRoute,
+        battery: 75
     };
 
     targets.push(newTarget);
     saveTargetsToStorage();
 
-    setupTargetOnMap(newTarget);
-
-    let index = 0;
-    setInterval(() => {
-        const point = newTarget.route[index % newTarget.route.length];
-        updateTargetLocation(newTarget.id, point.lat, point.lng);
-        index++;
-    }, 5000);
+    startTargetTracking(newTarget);
 
     alert(`${name} さんを追加しました。`);
     closeAddUserModal();
@@ -750,13 +762,11 @@ function saveNewName() {
         target.name = newName;
         saveTargetsToStorage();
 
-        // ピン上の名前省略表記更新
         const pinLabel = document.getElementById(`pin-label-${targetId}`);
         if (pinLabel) {
             pinLabel.innerText = newName.substring(0, 2);
         }
 
-        // カード上の表示名更新
         const cardName = document.getElementById(`card-name-${targetId}`);
         if (cardName) {
             cardName.innerText = newName;
@@ -767,7 +777,6 @@ function saveNewName() {
     }
 }
 
-/* メニュー・モーダル共通処理 */
 function toggleMenu() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("overlay");
