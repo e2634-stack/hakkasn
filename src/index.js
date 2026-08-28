@@ -67,7 +67,7 @@ export default {
       });
     }
 
-    // 3. 上記以外（index.html などの静的ファイル）は Assets に処理を渡す
+    // 3. 静的ファイル（index.html等）の配信処理
     if (env.ASSETS) {
       return env.ASSETS.fetch(request);
     }
