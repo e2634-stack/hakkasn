@@ -231,6 +231,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
 }
 
 .home-pin { background: #FFFFFF; border: 2px solid #2B1C0B; }
+.home-pin img { width: 20px; height: 20px; object-fit: contain; }
 .target-pin-1 { background: #4285F4; border: 2px solid #FFFFFF; color: #FFFFFF; }
 .target-pin-2 { background: #E91E63; border: 2px solid #FFFFFF; color: #FFFFFF; }
 .target-pin-default { background: #9C27B0; border: 2px solid #FFFFFF; color: #FFFFFF; }
@@ -331,7 +332,9 @@ function initMap(){
 
     const homeIconHtml = \`
         <div class="custom-pin home-pin">
-            <div class="custom-pin-content">🏠</div>
+            <div class="custom-pin-content">
+                <img src="home.png" alt="HOME">
+            </div>
         </div>
     \`;
 
@@ -399,6 +402,13 @@ function renderInfoCard(target) {
         container.appendChild(card);
     }
 
+    let battIcon = "battry-high.png";
+    const battNum = parseInt(target.battery, 10);
+    if (!isNaN(battNum)) {
+        if (battNum <= 20) battIcon = "battry-low.png";
+        else if (battNum <= 65) battIcon = "battry-mdium.png";
+    }
+
     card.innerHTML = \`
         <div class="user-name" id="card-name-\${target.id}">\${target.name}</div>
         <div class="item">
@@ -406,7 +416,7 @@ function renderInfoCard(target) {
             <div class="distance" id="dist-\${target.id}">-- m</div>
         </div>
         <div class="item">
-            <div style="font-size:20px;">🔋</div>
+            <img src="\${battIcon}" alt="battery" style="width:35px; height:auto;" id="batt-img-\${target.id}">
             <div class="battery" id="batt-\${target.id}">\${target.battery || '--'}%</div>
         </div>
         <button class="card-emergency-btn" onclick="triggerEmergencyFor('\${target.name}')">🚨 緊急</button>
@@ -452,8 +462,17 @@ function updateTargetLocation(id, lat, lng, battery) {
     }
 
     const battEl = document.getElementById(\`batt-\${id}\`);
-    if (battEl && battery !== undefined) {
-        battEl.innerText = battery + "%";
+    const battImgEl = document.getElementById(\`batt-img-\${id}\`);
+    if (battery !== undefined) {
+        if (battEl) battEl.innerText = battery + "%";
+        if (battImgEl) {
+            const battNum = parseInt(battery, 10);
+            if (!isNaN(battNum)) {
+                if (battNum <= 20) battImgEl.src = "battry-low.png";
+                else if (battNum <= 65) battImgEl.src = "battry-mdium.png";
+                else battImgEl.src = "battry-high.png";
+            }
+        }
     }
 
     saveLocationToLocalStorage(id, lat, lng);
@@ -754,7 +773,6 @@ export default {
         let lat = null;
         let lng = null;
 
-        // "lat,lng" 形式の文字列パース
         if (body.data && typeof body.data === "string") {
           const parts = body.data.split(",");
           if (parts.length >= 2) {
