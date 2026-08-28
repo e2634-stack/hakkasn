@@ -162,11 +162,6 @@ header {
     animation: pulse-btn 1s infinite alternate;
 }
 
-.btn-emergency {
-    background-color: #D93025;
-    color: white;
-}
-
 .btn-data {
     background-color: #0288d1;
     color: white;
@@ -326,21 +321,23 @@ body.emergency-mode h1 {
     color: #2B1C0B;
 }
 
-.card-delete-btn {
-    background: #ffcdd2;
-    color: #c62828;
-    border: 1px solid #e57373;
-    border-radius: 6px;
-    padding: 4px 8px;
-    font-size: 12px;
+/* カード内緊急ボタンのスタイル */
+.card-emergency-btn {
+    background: #D93025;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
     font-weight: bold;
     cursor: pointer;
     font-family: inherit;
-    transition: background 0.2s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    transition: background 0.2s, transform 0.1s;
 }
 
-.card-delete-btn:hover {
-    background: #ef9a9a;
+.card-emergency-btn:active {
+    transform: scale(0.95);
 }
 
 #emergencyBanner {
@@ -424,14 +421,13 @@ body.emergency-mode h1 {
 
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
-    
+
     <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ 見守り対象を追加</button>
     <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️ 名前の変更</button>
     <button class="sidebar-btn btn-delete-user" onclick="openDeleteModal()">🗑 対象者を削除</button>
 
     <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 ログをダウンロード</button>
     <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 ログを削除</button>
-    <button class="sidebar-btn btn-emergency" onclick="triggerEmergency()">🚨 緊急テスト</button>
 
     <!-- 家の位置変更 -->
     <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()">🏠 家の位置を変更</button>
@@ -561,7 +557,7 @@ function initMap(){
             </div>
         </div>
     `;
-    
+
     const homeIcon = L.divIcon({
         className: '',
         html: homeIconHtml,
@@ -667,7 +663,7 @@ function renderInfoCard(target) {
             <img src="${battIcon}" alt="battery">
             <div class="battery">${target.battery}%</div>
         </div>
-        <button class="card-delete-btn" onclick="removeUser(${target.id})">✕ 削除</button>
+        <button class="card-emergency-btn" onclick="triggerEmergencyFor('${target.name}')">🚨 緊急</button>
     `;
 }
 
@@ -680,7 +676,7 @@ function updateTargetLocation(id, lat, lng) {
     state.lastPos = currentPos;
 
     state.marker.setLatLng(currentPos);
-    
+
     state.pathHistory.push(currentPos);
     if (state.pathHistory.length > 5) {
         state.pathHistory.shift();
@@ -705,7 +701,7 @@ function openAddUserModal() {
     closeMenu();
     document.getElementById("addUserModal").style.display = "block";
     document.getElementById("overlay").classList.add("show");
-    
+
     const input = document.getElementById("newUserNameInput");
     if (targets.length === 1) {
         input.value = "Bちゃん";
@@ -728,7 +724,7 @@ function addNewUser() {
     }
 
     const newId = Date.now();
-    
+
     let selectedRoute;
     if (targets.length === 1) {
         selectedRoute = routePoints2;
@@ -975,29 +971,31 @@ function requestNotificationPermission() {
     }
 }
 
-function triggerEmergency() {
+function triggerEmergencyFor(userName) {
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
-    if (banner) banner.style.display = "block";
-    sendEmergencyNotification();
-    closeMenu();
+    if (banner) {
+        banner.innerText = `🚨 ${userName}さん 緊急事態発生 🚨`;
+        banner.style.display = "block";
+    }
+    sendEmergencyNotification(userName);
 }
 
-function sendEmergencyNotification() {
+function sendEmergencyNotification(userName) {
     if (!("Notification" in window)) return;
 
     if (Notification.permission === "granted") {
-        showNotification();
+        showNotification(userName);
     } else if (Notification.permission !== "denied") {
         Notification.requestPermission().then(p => {
-            if (p === "granted") showNotification();
+            if (p === "granted") showNotification(userName);
         });
     }
 }
 
-function showNotification() {
-    new Notification("🚨 緊急事態発生！", {
-        body: "見守り対象者のSOSボタンが押されたか、緊急イベントが発生しました。",
+function showNotification(userName) {
+    new Notification(`🚨 ${userName}さん 緊急事態発生！`, {
+        body: `${userName}さんのSOSボタンが押されたか、緊急イベントが発生しました。`,
         icon: "home.png",
         vibrate: [200, 100, 200, 100, 200],
         requireInteraction: true
