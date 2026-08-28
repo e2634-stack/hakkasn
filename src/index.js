@@ -1,4 +1,3 @@
-// 最新の位置情報を保持する変数（Workerが再起動するとリセットされるため、保持したい場合はKVやD1を使用します）
 let lastKnownLocation = {
   name: "Aちゃん",
   updatedAt: null,
@@ -12,20 +11,17 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 【1】 ESP8684 からの POST リクエスト処理 (位置情報の受信)
+    // 1. ESP8684 からの POST リクエスト処理
     if (request.method === "POST") {
       try {
         const body = await request.json();
         console.log("ESP8684 Received:", JSON.stringify(body));
 
-        // 送信データの `data` フィールドを解析
         let parsedData = {};
         if (body.data) {
           try {
-            // dataがJSON文字列の場合
             parsedData = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
           } catch (e) {
-            // 文字列の場合（例: "34.6492,134.9972"）
             const parts = body.data.split(",");
             if (parts.length >= 2) {
               parsedData = { lat: parseFloat(parts[0]), lng: parseFloat(parts[1]) };
@@ -33,7 +29,6 @@ export default {
           }
         }
 
-        // 位置情報の更新
         lastKnownLocation = {
           name: "Aちゃん",
           updatedAt: new Date().toISOString(),
@@ -58,18 +53,18 @@ export default {
       }
     }
 
-    // 【2】 位置情報API (GET /api/location でAちゃんの最新位置を取得)
+    // 2. Aちゃんの位置情報API
     if (url.pathname === "/api/location") {
       return new Response(JSON.stringify(lastKnownLocation, null, 2), {
         status: 200,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*" // フロントエンドからのアクセスを許可
+          "Access-Control-Allow-Origin": "*"
         }
       });
     }
 
-    // 【3】 その他のGETリクエスト（既存のWeb画面・画像等を表示）
-    return env.ASSETS.fetch(request);
+    // 3. 上記以外（GETリクエスト等）は何も返さずフォールバック処理に任せる
+    return new Response("Not Found", { status: 404 });
   },
 };
