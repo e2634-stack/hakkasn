@@ -1,4 +1,3 @@
-
 let lastKnownLocation = {
   name: "Aちゃん",
   updatedAt: null,
@@ -8,7 +7,6 @@ let lastKnownLocation = {
   raw_data: null
 };
 
-// HTMLコードを直接変数として保持
 const INDEX_HTML = `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -56,7 +54,7 @@ const INDEX_HTML = `<!DOCTYPE html>
         const data = await response.json();
 
         if (data.lat && data.lng) {
-          const latLng = [data.lat, data.lng];
+          const latLng = [parseFloat(data.lat), parseFloat(data.lng)];
           document.getElementById('updated-at').textContent = data.updatedAt ? new Date(data.updatedAt).toLocaleString('ja-JP') : 'なし';
           document.getElementById('battery').textContent = data.battery || '--';
 
@@ -82,34 +80,58 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. POST リクエスト処理 (ESP8684 / PC からのデータ受信)
+    // CORS プリフライト（OPTIONSリクエスト）対応
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+
+    // 1. POST リクエスト処理
     if (request.method === "POST") {
       try {
-        const body = await request.json();
-        console.log("ESP8684 Received:", JSON.stringify(body));
+        const rawBody = await request.text();
+        console.log("Raw Received Body:", rawBody);
 
-        let parsedData = {};
-        if (body.data) {
-          try {
-            parsedData = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
-          } catch (e) {
-            const parts = body.data.split(",");
-            if (parts.length >= 2) {
-              parsedData = { lat: parseFloat(parts[0]), lng: parseFloat(parts[1]) };
-            }
+        let body = {};
+        try {
+          body = JSON.parse(rawBody);
+        } catch (e) {
+          // JSONパース不可の場合はクエリ形式などの対応
+          console.warn("Body is not standard JSON, using raw string");
+          body = { data: rawBody };
+        }
+
+        let lat = null;
+        let lng = null;
+
+        // パターンA: {"data": "34.6492,134.9972"} の形式
+        if (body.data && typeof body.data === "string") {
+          const parts = body.data.split(",");
+          if (parts.length >= 2) {
+            lat = parseFloat(parts[0]);
+            lng = parseFloat(parts[1]);
           }
         }
+
+        // パターンB: {"lat": 34.6492, "lng": 134.9972} の形式
+        if (!lat && body.lat) lat = parseFloat(body.lat);
+        if (!lng && body.lng) lng = parseFloat(body.lng);
 
         lastKnownLocation = {
           name: "Aちゃん",
           updatedAt: new Date().toISOString(),
-          lat: parsedData.lat || body.lat || null,
-          lng: parsedData.lng || body.lng || null,
-          battery: parsedData.batt || body.batt || null,
-          raw_data: body.data || JSON.stringify(body)
+          lat: lat,
+          lng: lng,
+          battery: body.batt || body.battery || null,
+          raw_data: rawBody
         };
 
-        console.log("A's Location Updated:", JSON.stringify(lastKnownLocation));
+        console.log("Updated Location State:", JSON.stringify(lastKnownLocation));
 
         return new Response(JSON.stringify({ status: "success", location: lastKnownLocation }), {
           status: 200,
@@ -119,9 +141,9 @@ export default {
           }
         });
       } catch (error) {
-        console.error("Post Error:", error);
-        return new Response(JSON.stringify({ error: "Invalid Data Format" }), {
-          status: 400,
+        console.error("Post Processing Error:", error.toString());
+        return new Response(JSON.stringify({ error: error.toString() }), {
+          status: 500,
           headers: { "Content-Type": "application/json" }
         });
       }
@@ -138,7 +160,7 @@ export default {
       });
     }
 
-    // 3. トップページ（/）にアクセスした場合は直接 HTML を出力
+    // 3. トップページ（/）
     if (url.pathname === "/" || url.pathname === "/index.html") {
       return new Response(INDEX_HTML, {
         status: 200,
