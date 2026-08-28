@@ -1,3 +1,7 @@
 name = "hakkasn"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
+
+# ルート直下の静的ファイル（htmlやpng）をそのまま公開する設定
+[assets]
+directory = "."
