@@ -11,7 +11,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. ESP8684 からの POST リクエスト処理
+    // 1. ESP8684 / PC からの POST リクエスト処理
     if (request.method === "POST") {
       try {
         const body = await request.json();
@@ -42,7 +42,10 @@ export default {
 
         return new Response(JSON.stringify({ status: "success", location: lastKnownLocation }), {
           status: 200,
-          headers: { "Content-Type": "application/json" }
+          headers: { 
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*"
+          }
         });
       } catch (error) {
         console.error("Post Error:", error);
@@ -53,7 +56,7 @@ export default {
       }
     }
 
-    // 2. Aちゃんの位置情報API
+    // 2. Aちゃんの位置情報API (GET /api/location)
     if (url.pathname === "/api/location") {
       return new Response(JSON.stringify(lastKnownLocation, null, 2), {
         status: 200,
@@ -64,7 +67,11 @@ export default {
       });
     }
 
-    // 3. 上記以外（GETリクエスト等）は何も返さずフォールバック処理に任せる
+    // 3. 上記以外（index.html などの静的ファイル）は Assets に処理を渡す
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
     return new Response("Not Found", { status: 404 });
   },
 };
