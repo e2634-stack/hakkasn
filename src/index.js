@@ -318,7 +318,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <div class="menu-btn" onclick="toggleMenu()">
         <span></span><span></span><span></span>
     </div>
-    <h1>見守りMAP</h1>
+    <h1>lo cat</h1>
 </header>
 
 <div id="map"></div>
