@@ -1,30 +1,31 @@
-// 最新の位置情報を保持する変数
+// 最新の位置情報およびステータスを保持する変数
 let lastKnownLocation = {
   name: "Aちゃん",
   updatedAt: null,
   lat: 35.636667,
   lng: 139.881667,
   battery: 85,
-  isEmergency: false,
+  buzzer: "OFF",
   raw_data: null
 };
 
-// NMEA形式の緯度・経度文字列を 10進数の度（Decimal Degrees）に変換するヘルパー関数
-function parseNMEACoord(coordStr, direction) {
-  if (!coordStr) return null;
-  const val = parseFloat(coordStr);
-  if (isNaN(val)) return null;
+// GPGGA の度分形式 (例: 3441.6775, N, 13454.1213, E) を 10進数の緯度経度に変換する関数
+function parseGPGGALatLng(rawLat, latDir, rawLng, lngDir) {
+  if (!rawLat || !rawLng) return null;
 
-  // 緯度は2桁（DDMM.MMMM）、経度は3桁（DDDMM.MMMM）が度の部分
-  const degDigits = (direction === 'E' || direction === 'W') ? 3 : 2;
-  const degrees = Math.floor(val / Math.pow(10, coordStr.split('.')[0].length - degDigits));
-  const minutes = val - (degrees * Math.pow(10, coordStr.split('.')[0].length - degDigits));
-  
-  let decimal = degrees + (minutes / 60);
-  if (direction === 'S' || direction === 'W') {
-    decimal = -decimal;
-  }
-  return decimal;
+  // 緯度: 先頭2桁が「度」、残りが「分」
+  const latDeg = parseFloat(rawLat.substring(0, 2));
+  const latMin = parseFloat(rawLat.substring(2));
+  let lat = latDeg + (latMin / 60);
+  if (latDir === 'S') lat = -lat;
+
+  // 経度: 先頭3桁が「度」、残りが「分」
+  const lngDeg = parseFloat(rawLng.substring(0, 3));
+  const lngMin = parseFloat(rawLng.substring(3));
+  let lng = lngDeg + (lngMin / 60);
+  if (lngDir === 'W') lng = -lng;
+
+  return { lat, lng };
 }
 
 // HTMLテンプレート
@@ -377,7 +378,6 @@ function initMap(){
         setupTargetOnMap(target);
     });
 
-    // 3秒周期で Workers の API から位置情報を取得する
     setInterval(fetchRealTimeLocation, 3000);
     fetchRealTimeLocation();
 }
@@ -451,13 +451,12 @@ async function fetchRealTimeLocation() {
             const lat = parseFloat(data.lat);
             const lng = parseFloat(data.lng);
             
-            // ID 1 (Aちゃん) の位置情報を自動更新
+            // ID 1 (Aちゃん) の位置情報を更新
             updateTargetLocation(1, lat, lng, data.battery);
 
-            // ブザーがONの場合は緊急メッセージを発報
-            if (data.isEmergency) {
-                const targetName = (targets.find(t => t.id === 1) || {}).name || "Aちゃん";
-                triggerEmergencyFor(targetName);
+            // ブザー状態が ON であれば自動的に緊急アラート表示
+            if (data.buzzer === "ON") {
+                triggerEmergencyFor(data.name || "Aちゃん");
             }
         }
     } catch (e) {
@@ -788,70 +787,69 @@ export default {
       });
     }
 
-    // 2. POST リクエストの受信処理 (NMEAテキスト / JSON 対応)
+    // 2. POST リクエストの受信処理 (テキストデータ / JSON 両対応)
     if (request.method === "POST") {
       try {
         const rawBody = await request.text();
-        
+
         let lat = null;
         let lng = null;
-        let battery = 85;
-        let isEmergency = false;
+        let battery = null;
+        let buzzer = "OFF";
 
-        // 改行コードで区切って解析
-        const lines = rawBody.split(/\r?\n/);
+        // 行ごとにテキストデータを分解して解析
+        const lines = rawBody.split("\n").map(l => l.trim());
 
         for (const line of lines) {
-          const trimmed = line.trim();
-
-          // $GPGGA または $GNGGA 行のパース
-          if (trimmed.startsWith("$GPGGA") || trimmed.startsWith("$GNGGA")) {
-            const parts = trimmed.split(",");
+          // 1行目: $GPGGA または $NPGGA 等のNMEAフォーマット解析
+          if (line.includes("GPGGA")) {
+            const parts = line.split(",");
+            // GPGGAのフォーマット例: $GPGGA,000013.00,3441.6775,N,13454.1213,E,...
             if (parts.length >= 6) {
-              const parsedLat = parseNMEACoord(parts[2], parts[3]);
-              const parsedLng = parseNMEACoord(parts[4], parts[5]);
-              if (parsedLat !== null && parsedLng !== null) {
-                lat = parsedLat;
-                lng = parsedLng;
+              const parsed = parseGPGGALatLng(parts[2], parts[3], parts[4], parts[5]);
+              if (parsed) {
+                lat = parsed.lat;
+                lng = parsed.lng;
               }
             }
           }
-
-          // $BATT 行のパース (例: $BATT 4195mV 99%)
-          if (trimmed.startsWith("$BATT")) {
-            const battMatch = trimmed.match(/(\d+)%/);
-            if (battMatch) {
-              battery = parseInt(battMatch[1], 10);
+          // 2行目: バッテリー解析 ($BATT 4195mV 99%)
+          else if (line.startsWith("$BATT")) {
+            const match = line.match(/(\d+)%/);
+            if (match) {
+              battery = parseInt(match[1], 10);
             }
           }
-
-          // $BUZZ 行のパース (例: $BUZZ ON)
-          if (trimmed.startsWith("$BUZZ")) {
-            if (trimmed.includes("ON")) {
-              isEmergency = true;
+          // 3行目: ブザー解析 ($BUZZ OFF または $BUZZ ON)
+          else if (line.startsWith("$BUZZ")) {
+            if (line.includes("ON")) {
+              buzzer = "ON";
             }
           }
         }
 
-        // フォールバック: 送信データが JSON 形式の場合のパース対応
+        // 送信データが JSON フォーマットだった場合のフォールバック処理
         if (!lat && !lng) {
           try {
             const body = JSON.parse(rawBody);
             if (body.lat) lat = parseFloat(body.lat);
             if (body.lng) lng = parseFloat(body.lng);
-            if (body.battery) battery = parseInt(body.battery, 10);
-          } catch(e) {}
+            if (body.battery || body.batt) battery = body.battery || body.batt;
+            if (body.buzzer) buzzer = body.buzzer;
+          } catch (e) {
+            // JSON ではない場合無視
+          }
         }
 
-        // 位置情報がパースできた場合更新
+        // 解析成功時に保持データを更新
         if (lat !== null && lng !== null) {
           lastKnownLocation = {
             name: "Aちゃん",
             updatedAt: new Date().toISOString(),
             lat: lat,
             lng: lng,
-            battery: battery,
-            isEmergency: isEmergency,
+            battery: battery !== null ? battery : lastKnownLocation.battery,
+            buzzer: buzzer,
             raw_data: rawBody
           };
         }
