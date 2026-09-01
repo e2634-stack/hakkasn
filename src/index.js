@@ -5,8 +5,27 @@ let lastKnownLocation = {
   lat: 35.636667,
   lng: 139.881667,
   battery: 85,
+  isEmergency: false,
   raw_data: null
 };
+
+// NMEA形式の緯度・経度文字列を 10進数の度（Decimal Degrees）に変換するヘルパー関数
+function parseNMEACoord(coordStr, direction) {
+  if (!coordStr) return null;
+  const val = parseFloat(coordStr);
+  if (isNaN(val)) return null;
+
+  // 緯度は2桁（DDMM.MMMM）、経度は3桁（DDDMM.MMMM）が度の部分
+  const degDigits = (direction === 'E' || direction === 'W') ? 3 : 2;
+  const degrees = Math.floor(val / Math.pow(10, coordStr.split('.')[0].length - degDigits));
+  const minutes = val - (degrees * Math.pow(10, coordStr.split('.')[0].length - degDigits));
+  
+  let decimal = degrees + (minutes / 60);
+  if (direction === 'S' || direction === 'W') {
+    decimal = -decimal;
+  }
+  return decimal;
+}
 
 // HTMLテンプレート
 const INDEX_HTML = `<!DOCTYPE html>
@@ -434,6 +453,12 @@ async function fetchRealTimeLocation() {
             
             // ID 1 (Aちゃん) の位置情報を自動更新
             updateTargetLocation(1, lat, lng, data.battery);
+
+            // ブザーがONの場合は緊急メッセージを発報
+            if (data.isEmergency) {
+                const targetName = (targets.find(t => t.id === 1) || {}).name || "Aちゃん";
+                triggerEmergencyFor(targetName);
+            }
         }
     } catch (e) {
         console.error("データ取得エラー:", e);
@@ -763,33 +788,70 @@ export default {
       });
     }
 
-    // 2. POST リクエストの受信処理 (ESP8684からの送信用)
+    // 2. POST リクエストの受信処理 (NMEAテキスト / JSON 対応)
     if (request.method === "POST") {
       try {
         const rawBody = await request.text();
-        let body = {};
-        try { body = JSON.parse(rawBody); } catch (e) { body = { data: rawBody }; }
-
+        
         let lat = null;
         let lng = null;
+        let battery = 85;
+        let isEmergency = false;
 
-        if (body.data && typeof body.data === "string") {
-          const parts = body.data.split(",");
-          if (parts.length >= 2) {
-            lat = parseFloat(parts[0]);
-            lng = parseFloat(parts[1]);
+        // 改行コードで区切って解析
+        const lines = rawBody.split(/\r?\n/);
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+
+          // $GPGGA または $GNGGA 行のパース
+          if (trimmed.startsWith("$GPGGA") || trimmed.startsWith("$GNGGA")) {
+            const parts = trimmed.split(",");
+            if (parts.length >= 6) {
+              const parsedLat = parseNMEACoord(parts[2], parts[3]);
+              const parsedLng = parseNMEACoord(parts[4], parts[5]);
+              if (parsedLat !== null && parsedLng !== null) {
+                lat = parsedLat;
+                lng = parsedLng;
+              }
+            }
+          }
+
+          // $BATT 行のパース (例: $BATT 4195mV 99%)
+          if (trimmed.startsWith("$BATT")) {
+            const battMatch = trimmed.match(/(\d+)%/);
+            if (battMatch) {
+              battery = parseInt(battMatch[1], 10);
+            }
+          }
+
+          // $BUZZ 行のパース (例: $BUZZ ON)
+          if (trimmed.startsWith("$BUZZ")) {
+            if (trimmed.includes("ON")) {
+              isEmergency = true;
+            }
           }
         }
-        if (!lat && body.lat) lat = parseFloat(body.lat);
-        if (!lng && body.lng) lng = parseFloat(body.lng);
 
-        if (lat && lng) {
+        // フォールバック: 送信データが JSON 形式の場合のパース対応
+        if (!lat && !lng) {
+          try {
+            const body = JSON.parse(rawBody);
+            if (body.lat) lat = parseFloat(body.lat);
+            if (body.lng) lng = parseFloat(body.lng);
+            if (body.battery) battery = parseInt(body.battery, 10);
+          } catch(e) {}
+        }
+
+        // 位置情報がパースできた場合更新
+        if (lat !== null && lng !== null) {
           lastKnownLocation = {
             name: "Aちゃん",
             updatedAt: new Date().toISOString(),
             lat: lat,
             lng: lng,
-            battery: body.batt || body.battery || 85,
+            battery: battery,
+            isEmergency: isEmergency,
             raw_data: rawBody
           };
         }
