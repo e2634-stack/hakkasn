@@ -211,7 +211,7 @@ h1 {
 }
 
 .header-logo {
-    height: 64px;
+    height: 32px;
     width: auto;
     object-fit: contain;
 }
@@ -351,6 +351,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
 let map;
 let homeMarker;
 let isSettingHome = false;
+let isEmergencyActive = false; // 緊急状態を一度だけ発火するためのフラグ
 
 let targets = JSON.parse(localStorage.getItem("mapTargets")) || [
     { id: 1, name: "Aちゃん", pinClass: "target-pin-1", color: "#4285F4", battery: "--" }
@@ -362,6 +363,9 @@ const savedHome = JSON.parse(localStorage.getItem("homeLocation"));
 let home = savedHome || { lat: 35.645000, lng: 139.891667 };
 
 function initMap(){
+    // ブラウザ通知の許可要求
+    requestNotificationPermission();
+
     map = L.map('map').setView([home.lat, home.lng], 15);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -399,6 +403,15 @@ function initMap(){
 
     setInterval(fetchRealTimeLocation, 3000);
     fetchRealTimeLocation();
+}
+
+// 通知許可を取得する関数
+function requestNotificationPermission() {
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
 }
 
 function setupTargetOnMap(target) {
@@ -476,6 +489,8 @@ async function fetchRealTimeLocation() {
             // ブザー状態が ON であれば自動的に緊急アラート表示
             if (data.buzzer === "ON") {
                 triggerEmergencyFor(data.name || "Aちゃん");
+            } else {
+                isEmergencyActive = false; // BUZZERがOFFに戻ったらフラグ解除
             }
         }
     } catch (e) {
@@ -733,12 +748,56 @@ function updateHomePosition(newLat, newLng) {
     });
 }
 
+// 警告音を再生する関数 (Web Audio API)
+function playEmergencySound() {
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5ノート
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {
+        console.error("音声再生エラー:", e);
+    }
+}
+
 function triggerEmergencyFor(userName) {
+    // 画面のUI更新（背景を赤化、バナー表示）
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
     if (banner) {
         banner.innerText = \`🚨 \${userName}さん 緊急事態発生 🚨\`;
         banner.style.display = "block";
+    }
+
+    // 発火制御：一度実行したらブザーが解除されるまで連続通知を防ぐ
+    if (!isEmergencyActive) {
+        isEmergencyActive = true;
+
+        // 1. Web Notification API によるブラウザプッシュ通知
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification("🚨 緊急事態発生", {
+                body: \`\${userName} さんの緊急ブザーが作動しました！\`,
+                icon: "logo.png",
+                requireInteraction: true
+            });
+        }
+
+        // 2. 音による警告
+        playEmergencySound();
     }
 }
 
