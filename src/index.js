@@ -199,7 +199,23 @@ header {
 .modal-btn-delete { background: #e53935; color: white; }
 .modal-btn-cancel { background: #757575; color: white; }
 
-h1 { text-align:center; margin: 0; font-size: 24px; transition: color 0.5s ease; }
+h1 {
+    text-align: center;
+    margin: 0;
+    font-size: 24px;
+    transition: color 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.header-logo {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
+}
+
 body.emergency-mode h1 { color: #FFFFFF; }
 
 #map { width:100%; height:60vh; }
@@ -321,7 +337,8 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <div class="menu-btn" onclick="toggleMenu()">
         <span></span><span></span><span></span>
     </div>
-    <h1><img src="logo.png" alt="logo" class="header-logo">lo cat</h1></header>
+    <h1><img src="logo.png" alt="logo" class="header-logo">lo cat</h1>
+</header>
 
 <div id="map"></div>
 <div id="info-container"></div>
