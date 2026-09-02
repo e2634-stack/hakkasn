@@ -1,4 +1,4 @@
-// 最新の位置情報およびステータスを保持する変数
+// 最新の位置情報およびステータスを保持する初期オブジェクト（KV未存在時のフォールバック用）
 let lastKnownLocation = {
   name: "Aちゃん",
   updatedAt: null,
@@ -84,7 +84,7 @@ header {
     height: 44px;
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
+    justify-style: space-evenly;
     align-items: center;
     padding: 6px;
     box-sizing: border-box;
@@ -857,16 +857,18 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // CORS プリフライトリクエスト処理
     if (request.method === "OPTIONS") {
       return new Response(null, {
         headers: {
           "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
         },
       });
     }
 
+    // --- 【データ受信処理】GPS等からの POST リクエスト ---
     if (request.method === "POST") {
       try {
         const rawBody = await request.text();
@@ -875,6 +877,18 @@ export default {
         let lng = null;
         let battery = null;
         let buzzer = "OFF";
+
+        // 電池残量の既定値（KV保存済みの前回値を使用する用）
+        let currentBattery = lastKnownLocation.battery;
+        if (env.LOCATION_KV) {
+          const kvData = await env.LOCATION_KV.get("latest_location");
+          if (kvData) {
+            try {
+              const parsedKv = JSON.parse(kvData);
+              if (parsedKv.battery !== undefined) currentBattery = parsedKv.battery;
+            } catch(e) {}
+          }
+        }
 
         const lines = rawBody.split("\n").map(l => l.trim());
 
@@ -912,19 +926,45 @@ export default {
           } catch (e) {}
         }
 
+        let newLocation = null;
+
         if (lat !== null && lng !== null) {
-          lastKnownLocation = {
+          newLocation = {
             name: "Aちゃん",
             updatedAt: new Date().toISOString(),
             lat: lat,
             lng: lng,
-            battery: battery !== null ? battery : lastKnownLocation.battery,
+            battery: battery !== null ? battery : currentBattery,
             buzzer: buzzer,
             raw_data: rawBody
           };
+
+          // ① Cloudflare KV への保存処理
+          if (env.LOCATION_KV) {
+            // 最新ステータスを保存
+            await env.LOCATION_KV.put("latest_location", JSON.stringify(newLocation));
+
+            // 履歴の蓄積保存
+            const historyJson = await env.LOCATION_KV.get("location_history");
+            let history = historyJson ? JSON.parse(historyJson) : [];
+
+            history.push({
+              userId: 1,
+              timestamp: Date.now(),
+              lat: lat,
+              lng: lng
+            });
+
+            // 直近1000件までに制限
+            if (history.length > 1000) history = history.slice(-1000);
+            await env.LOCATION_KV.put("location_history", JSON.stringify(history));
+          }
+
+          // メモリ上のフォールバック値も更新
+          lastKnownLocation = newLocation;
         }
 
-        return new Response(JSON.stringify({ status: "success", location: lastKnownLocation }), {
+        return new Response(JSON.stringify({ status: "success", location: newLocation || lastKnownLocation }), {
           status: 200,
           headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
         });
@@ -936,13 +976,55 @@ export default {
       }
     }
 
-    if (url.pathname === "/api/location") {
-      return new Response(JSON.stringify(lastKnownLocation), {
+    // --- 【データ取得処理】画面からの最新ステータス取得 GET ---
+    if (url.pathname === "/api/location" && request.method === "GET") {
+      let locationData = null;
+
+      if (env.LOCATION_KV) {
+        const kvData = await env.LOCATION_KV.get("latest_location");
+        if (kvData) {
+          try {
+            locationData = JSON.parse(kvData);
+          } catch(e) {}
+        }
+      }
+
+      // KVから取得できなかった場合の初期値
+      if (!locationData) {
+        locationData = lastKnownLocation;
+      }
+
+      return new Response(JSON.stringify(locationData), {
         status: 200,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
       });
     }
 
+    // --- 【データ取得処理】全履歴取得 GET ---
+    if (url.pathname === "/api/location/history" && request.method === "GET") {
+      let historyJson = "[]";
+      if (env.LOCATION_KV) {
+        historyJson = (await env.LOCATION_KV.get("location_history")) || "[]";
+      }
+      return new Response(historyJson, {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      });
+    }
+
+    // --- 【データ削除処理】全履歴削除 DELETE ---
+    if (url.pathname === "/api/location/history" && request.method === "DELETE") {
+      if (env.LOCATION_KV) {
+        await env.LOCATION_KV.delete("location_history");
+        await env.LOCATION_KV.delete("latest_location");
+      }
+      return new Response(JSON.stringify({ status: "cleared" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      });
+    }
+
+    // HTML画面の応答
     if (url.pathname === "/" || url.pathname === "/index.html") {
       return new Response(INDEX_HTML, {
         status: 200,
