@@ -507,10 +507,8 @@ function updateTargetLocation(id, lat, lng, battery) {
 
     state.marker.setLatLng(currentPos);
 
+    // 移動軌跡を制限せずに全て保持・描画する
     state.pathHistory.push(currentPos);
-    if (state.pathHistory.length > 20) {
-        state.pathHistory.shift();
-    }
     state.trackLine.setLatLngs(state.pathHistory);
 
     const dist = getDistance(home.lat, home.lng, lat, lng);
