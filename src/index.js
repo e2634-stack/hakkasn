@@ -48,7 +48,7 @@ body{
     margin:0;
     font-family: 'M PLUS Rounded 1c', sans-serif;
     color: #2B1C0B;
-    background:#FFF8EB;
+    background:#ffffff;
     transition: background-color 0.5s ease;
 }
 
