@@ -72,8 +72,6 @@ header {
     padding: 10px 0;
 }
 
-/* メニューボタン（ハンバーガーアイコン）のスタイル修正 */
-/* メニューボタン（ハンバーガーアイコン）のスタイル修正 */
 .menu-btn {
     position: absolute;
     left: 10px;
@@ -82,21 +80,28 @@ header {
     border-radius: 8px;
     width: 44px;
     height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    justify-content: center; /* space-evenly から変更 */
-    align-items: center;
-    gap: 5px; /* 線同士の間隔を直接指定 */
-    padding: 0; /* 6px から 0 に変更して潰れを防止 */
-    margin: 0;
-    box-sizing: border-box;
     cursor: pointer;
     z-index: 1000;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-sizing: border-box;
 }
+
+/* 線を中央に基準配置 */
+.menu-btn span {
+    display: block;
+    width: 22px;
+    height: 3px;
+    background-color: #2B1C0B;
+    border-radius: 2px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* 1本目、2本目、3本目の位置を個別指定 */
+.menu-btn span:nth-child(1) { top: 12px; }
+.menu-btn span:nth-child(2) { top: 19px; }
+.menu-btn span:nth-child(3) { top: 26px; }
 
 .menu-btn span {
     display: block;
