@@ -299,8 +299,8 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ 見守り対象を追加</button>
     <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️ 名前の変更</button>
     <button class="sidebar-btn btn-delete-user" onclick="openDeleteModal()">🗑 対象者を削除</button>
-    <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 ログをダウンロード</button>
-    <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 ログを削除</button>
+    <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 移動データをダウンロード</button>
+    <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 移動データを削除</button>
 
     <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()">🏠 家の位置を変更</button>
     <div id="homeSubMenu" class="sub-menu">
