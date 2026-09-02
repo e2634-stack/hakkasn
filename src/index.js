@@ -36,7 +36,6 @@ const INDEX_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Locat</title>
 
-<!-- タブ（ファビコン）に logo.png を設定 -->
 <link rel="icon" href="logo.png" type="image/png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -84,9 +83,9 @@ header {
     height: 44px;
     display: flex;
     flex-direction: column;
-    justify-style: space-evenly;
+    justify-content: space-between;
     align-items: center;
-    padding: 6px;
+    padding: 8px 6px;
     box-sizing: border-box;
     cursor: pointer;
     z-index: 1000;
@@ -99,6 +98,7 @@ header {
     height: 3px;
     background-color: #2B1C0B;
     border-radius: 2px;
+    flex-shrink: 0;
 }
 
 /* サイドバーのスタイル修正 */
