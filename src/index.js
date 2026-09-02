@@ -83,23 +83,28 @@ header {
     height: 44px;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* 中央に寄せてgapで間隔を制御 */
+    justify-content: center;
     align-items: center;
-    gap: 5px; /* 線同士の間隔 */
-    padding: 0; /* paddingによる潰れを防止 */
+    gap: 4px; /* 線同士の間隔 */
+    padding: 0;
+    margin: 0;
     box-sizing: border-box;
     cursor: pointer;
     z-index: 1000;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    line-height: 0; /* 高さに余計な影響を与えないための指定 */
 }
 
 .menu-btn span {
     display: block;
-    width: 24px; /* 横幅を固定 */
+    width: 22px;
     height: 3px;
     background-color: #2B1C0B;
     border-radius: 2px;
-    flex-shrink: 0; /* 潰れ防止 */
+    flex-shrink: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 /* サイドバーのスタイル修正 */
 .sidebar {
