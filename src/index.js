@@ -211,7 +211,7 @@ h1 {
 }
 
 .header-logo {
-    height: 32px;
+    height: 64px;
     width: auto;
     object-fit: contain;
 }
