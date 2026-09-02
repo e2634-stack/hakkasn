@@ -2,5 +2,10 @@ name = "mimamori-map"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
+# Cloudflare KV のバインディング設定
+[[kv_namespaces]]
+binding = "LOCATION_KV"
+id = "YOUR_KV_NAMESPACE_ID"  # wrangler kv:namespace create LOCATION_KV で取得したIDを入力
+
 [assets]
 directory = "./public"
