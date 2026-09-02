@@ -93,6 +93,17 @@ header {
     cursor: pointer;
     z-index: 1000;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+    .menu-btn span {
+    display: block;
+    width: 22px;
+    height: 3px;
+    background-color: #2B1C0B;
+    border-radius: 2px;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 /* サイドバーのスタイル修正 */
 .sidebar {
