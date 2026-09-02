@@ -34,7 +34,7 @@ const INDEX_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>locat</title>
+<title>Locat</title>
 
 <!-- タブ（ファビコン）に logo.png を設定 -->
 <link rel="icon" href="logo.png" type="image/png">
@@ -337,7 +337,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <div class="menu-btn" onclick="toggleMenu()">
         <span></span><span></span><span></span>
     </div>
-    <h1><img src="logo.png" alt="logo" class="header-logo">locat</h1>
+    <h1><img src="logo.png" alt="logo" class="header-logo">Locat</h1>
 </header>
 
 <div id="map"></div>
