@@ -83,7 +83,7 @@ header {
     height: 44px;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
+    justify-around: space-around;
     padding: 8px;
     box-sizing: border-box;
     cursor: pointer;
@@ -435,7 +435,7 @@ function setupTargetOnMap(target) {
     targetState[target.id] = {
         marker: marker,
         trackLine: trackLine,
-        pathHistory: [],
+        pathHistory: [], // { lat, lng, timestamp } の配列オブジェクトに変更
         lastPos: initialPoint
     };
 
@@ -502,14 +502,29 @@ function updateTargetLocation(id, lat, lng, battery) {
     const state = targetState[id];
     if (!state) return;
 
+    const now = Date.now();
     const currentPos = [lat, lng];
     state.lastPos = currentPos;
 
     state.marker.setLatLng(currentPos);
 
-    // 移動軌跡を制限せずに全て保持・描画する
-    state.pathHistory.push(currentPos);
-    state.trackLine.setLatLngs(state.pathHistory);
+    // タイムスタンプ付きで座標を履歴に追加
+    state.pathHistory.push({
+        lat: lat,
+        lng: lng,
+        timestamp: now
+    });
+
+    // 2時間（120分 × 60秒 × 1000ミリ秒）のミリ秒数
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+    // 地図描画用に直近2時間以内のデータのみフィルタリング
+    const recentPoints = state.pathHistory
+        .filter(item => (now - item.timestamp) <= TWO_HOURS_MS)
+        .map(item => [item.lat, item.lng]);
+
+    // 2時間以内の座標群のみでラインを描画
+    state.trackLine.setLatLngs(recentPoints);
 
     const dist = getDistance(home.lat, home.lng, lat, lng);
     const distEl = document.getElementById(\`dist-\${id}\`);
@@ -531,6 +546,7 @@ function updateTargetLocation(id, lat, lng, battery) {
         }
     }
 
+    // すべてのログ（時間制限なし）をそのまま保存
     saveLocationToLocalStorage(id, lat, lng);
 }
 
