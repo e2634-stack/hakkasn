@@ -73,6 +73,7 @@ header {
 }
 
 /* メニューボタン（ハンバーガーアイコン）のスタイル修正 */
+/* メニューボタン（ハンバーガーアイコン）のスタイル修正 */
 .menu-btn {
     position: absolute;
     left: 10px;
@@ -81,20 +82,23 @@ header {
     border-radius: 8px;
     width: 44px;
     height: 44px;
-    min-width: 44px; /* 追加: 横幅の最小値を固定 */
-    min-height: 44px; /* 追加: 高さの最小値を固定 */
-    flex-shrink: 0; /* 追加: つぶれ防止 */
+    min-width: 44px;
+    min-height: 44px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    justify-content: space-evenly;
+    justify-content: center; /* space-evenly から変更 */
     align-items: center;
-    padding: 6px;
+    gap: 5px; /* 線同士の間隔を直接指定 */
+    padding: 0; /* 6px から 0 に変更して潰れを防止 */
+    margin: 0;
     box-sizing: border-box;
     cursor: pointer;
     z-index: 1000;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  }
-    .menu-btn span {
+}
+
+.menu-btn span {
     display: block;
     width: 22px;
     height: 3px;
