@@ -321,8 +321,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <div class="menu-btn" onclick="toggleMenu()">
         <span></span><span></span><span></span>
     </div>
-    <h1>lo cat</h1>
-</header>
+    <h1><img src="logo.png" alt="logo" class="header-logo">lo cat</h1></header>
 
 <div id="map"></div>
 <div id="info-container"></div>
