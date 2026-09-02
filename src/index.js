@@ -73,6 +73,7 @@ header {
     padding: 10px 0;
 }
 
+/* メニューボタン（ハンバーガーアイコン）のスタイル修正 */
 .menu-btn {
     position: absolute;
     left: 10px;
@@ -83,8 +84,9 @@ header {
     height: 44px;
     display: flex;
     flex-direction: column;
-    justify-around: space-around;
-    padding: 8px;
+    justify-content: space-evenly;
+    align-items: center;
+    padding: 6px;
     box-sizing: border-box;
     cursor: pointer;
     z-index: 1000;
@@ -99,11 +101,12 @@ header {
     border-radius: 2px;
 }
 
+/* サイドバーのスタイル修正 */
 .sidebar {
     position: fixed;
     top: 0;
-    left: -280px;
-    width: 260px;
+    left: -290px;
+    width: 270px;
     height: 100%;
     background-color: #FFFFFF;
     box-shadow: 2px 0 10px rgba(0,0,0,0.3);
@@ -351,7 +354,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
 let map;
 let homeMarker;
 let isSettingHome = false;
-let isEmergencyActive = false; // 緊急状態を一度だけ発火するためのフラグ
+let isEmergencyActive = false;
 
 let targets = JSON.parse(localStorage.getItem("mapTargets")) || [
     { id: 1, name: "Aちゃん", pinClass: "target-pin-1", color: "#4285F4", battery: "--" }
@@ -363,7 +366,6 @@ const savedHome = JSON.parse(localStorage.getItem("homeLocation"));
 let home = savedHome || { lat: 35.645000, lng: 139.891667 };
 
 function initMap(){
-    // ブラウザ通知の許可要求
     requestNotificationPermission();
 
     map = L.map('map').setView([home.lat, home.lng], 15);
@@ -405,7 +407,6 @@ function initMap(){
     fetchRealTimeLocation();
 }
 
-// 通知許可を取得する関数
 function requestNotificationPermission() {
     if ("Notification" in window) {
         if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -435,7 +436,7 @@ function setupTargetOnMap(target) {
     targetState[target.id] = {
         marker: marker,
         trackLine: trackLine,
-        pathHistory: [], // { lat, lng, timestamp } の配列オブジェクトに変更
+        pathHistory: [],
         lastPos: initialPoint
     };
 
@@ -482,15 +483,13 @@ async function fetchRealTimeLocation() {
         if (data && data.lat && data.lng) {
             const lat = parseFloat(data.lat);
             const lng = parseFloat(data.lng);
-            
-            // ID 1 (Aちゃん) の位置情報を更新
+
             updateTargetLocation(1, lat, lng, data.battery);
 
-            // ブザー状態が ON であれば自動的に緊急アラート表示
             if (data.buzzer === "ON") {
                 triggerEmergencyFor(data.name || "Aちゃん");
             } else {
-                isEmergencyActive = false; // BUZZERがOFFに戻ったらフラグ解除
+                isEmergencyActive = false;
             }
         }
     } catch (e) {
@@ -508,22 +507,18 @@ function updateTargetLocation(id, lat, lng, battery) {
 
     state.marker.setLatLng(currentPos);
 
-    // タイムスタンプ付きで座標を履歴に追加
     state.pathHistory.push({
         lat: lat,
         lng: lng,
         timestamp: now
     });
 
-    // 2時間（120分 × 60秒 × 1000ミリ秒）のミリ秒数
     const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
-    // 地図描画用に直近2時間以内のデータのみフィルタリング
     const recentPoints = state.pathHistory
         .filter(item => (now - item.timestamp) <= TWO_HOURS_MS)
         .map(item => [item.lat, item.lng]);
 
-    // 2時間以内の座標群のみでラインを描画
     state.trackLine.setLatLngs(recentPoints);
 
     const dist = getDistance(home.lat, home.lng, lat, lng);
@@ -546,7 +541,6 @@ function updateTargetLocation(id, lat, lng, battery) {
         }
     }
 
-    // すべてのログ（時間制限なし）をそのまま保存
     saveLocationToLocalStorage(id, lat, lng);
 }
 
@@ -762,7 +756,6 @@ function updateHomePosition(newLat, newLng) {
     });
 }
 
-// 警告音を再生する関数 (Web Audio API)
 function playEmergencySound() {
     try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -772,7 +765,7 @@ function playEmergencySound() {
         const gain = ctx.createGain();
 
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime); // A5ノート
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
 
         gain.gain.setValueAtTime(0.3, ctx.currentTime);
@@ -789,7 +782,6 @@ function playEmergencySound() {
 }
 
 function triggerEmergencyFor(userName) {
-    // 画面のUI更新（背景を赤化、バナー表示）
     document.body.classList.add("emergency-mode");
     const banner = document.getElementById("emergencyBanner");
     if (banner) {
@@ -797,11 +789,9 @@ function triggerEmergencyFor(userName) {
         banner.style.display = "block";
     }
 
-    // 発火制御：一度実行したらブザーが解除されるまで連続通知を防ぐ
     if (!isEmergencyActive) {
         isEmergencyActive = true;
 
-        // 1. Web Notification API によるブラウザプッシュ通知
         if ("Notification" in window && Notification.permission === "granted") {
             new Notification("🚨 緊急事態発生", {
                 body: \`\${userName} さんの緊急ブザーが作動しました！\`,
@@ -810,7 +800,6 @@ function triggerEmergencyFor(userName) {
             });
         }
 
-        // 2. 音による警告
         playEmergencySound();
     }
 }
@@ -868,7 +857,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // 1. CORS対応 (OPTIONS)
     if (request.method === "OPTIONS") {
       return new Response(null, {
         headers: {
@@ -879,7 +867,6 @@ export default {
       });
     }
 
-    // 2. POST リクエストの受信処理 (テキストデータ / JSON 両対応)
     if (request.method === "POST") {
       try {
         const rawBody = await request.text();
@@ -889,14 +876,11 @@ export default {
         let battery = null;
         let buzzer = "OFF";
 
-        // 行ごとにテキストデータを分解して解析
         const lines = rawBody.split("\n").map(l => l.trim());
 
         for (const line of lines) {
-          // 1行目: $GPGGA または $NPGGA 等のNMEAフォーマット解析
           if (line.includes("GPGGA")) {
             const parts = line.split(",");
-            // GPGGAのフォーマット例: $GPGGA,000013.00,3441.6775,N,13454.1213,E,...
             if (parts.length >= 6) {
               const parsed = parseGPGGALatLng(parts[2], parts[3], parts[4], parts[5]);
               if (parsed) {
@@ -905,14 +889,12 @@ export default {
               }
             }
           }
-          // 2行目: バッテリー解析 ($BATT 4195mV 99%)
           else if (line.startsWith("$BATT")) {
             const match = line.match(/(\d+)%/);
             if (match) {
               battery = parseInt(match[1], 10);
             }
           }
-          // 3行目: ブザー解析 ($BUZZ OFF または $BUZZ ON)
           else if (line.startsWith("$BUZZ")) {
             if (line.includes("ON")) {
               buzzer = "ON";
@@ -920,7 +902,6 @@ export default {
           }
         }
 
-        // 送信データが JSON フォーマットだった場合のフォールバック処理
         if (!lat && !lng) {
           try {
             const body = JSON.parse(rawBody);
@@ -928,12 +909,9 @@ export default {
             if (body.lng) lng = parseFloat(body.lng);
             if (body.battery || body.batt) battery = body.battery || body.batt;
             if (body.buzzer) buzzer = body.buzzer;
-          } catch (e) {
-            // JSON ではない場合無視
-          }
+          } catch (e) {}
         }
 
-        // 解析成功時に保持データを更新
         if (lat !== null && lng !== null) {
           lastKnownLocation = {
             name: "Aちゃん",
@@ -958,7 +936,6 @@ export default {
       }
     }
 
-    // 3. ブラウザからの位置情報 API 呼び出し
     if (url.pathname === "/api/location") {
       return new Response(JSON.stringify(lastKnownLocation), {
         status: 200,
@@ -966,7 +943,6 @@ export default {
       });
     }
 
-    // 4. トップページ表示 (HTML)
     if (url.pathname === "/" || url.pathname === "/index.html") {
       return new Response(INDEX_HTML, {
         status: 200,
