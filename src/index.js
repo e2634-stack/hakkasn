@@ -81,30 +81,18 @@ header {
     border-radius: 8px;
     width: 44px;
     height: 44px;
+    min-width: 44px; /* 追加: 横幅の最小値を固定 */
+    min-height: 44px; /* 追加: 高さの最小値を固定 */
+    flex-shrink: 0; /* 追加: つぶれ防止 */
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: center;
-    gap: 4px; /* 線同士の間隔 */
-    padding: 0;
-    margin: 0;
+    padding: 6px;
     box-sizing: border-box;
     cursor: pointer;
     z-index: 1000;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    line-height: 0; /* 高さに余計な影響を与えないための指定 */
-}
-
-.menu-btn span {
-    display: block;
-    width: 22px;
-    height: 3px;
-    background-color: #2B1C0B;
-    border-radius: 2px;
-    flex-shrink: 0;
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 /* サイドバーのスタイル修正 */
 .sidebar {
