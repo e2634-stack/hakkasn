@@ -13,13 +13,11 @@ let lastKnownLocation = {
 function parseGPGGALatLng(rawLat, latDir, rawLng, lngDir) {
   if (!rawLat || !rawLng) return null;
 
-  // 緯度: 先頭2桁が「度」、残りが「分」
   const latDeg = parseFloat(rawLat.substring(0, 2));
   const latMin = parseFloat(rawLat.substring(2));
   let lat = latDeg + (latMin / 60);
   if (latDir === 'S') lat = -lat;
 
-  // 経度: 先頭3桁が「度」、残りが「分」
   const lngDeg = parseFloat(rawLng.substring(0, 3));
   const lngMin = parseFloat(rawLng.substring(3));
   let lng = lngDeg + (lngMin / 60);
@@ -36,9 +34,7 @@ const INDEX_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Locat</title>
 
-<!-- タブ（ファビコン）に logo.png を設定 -->
 <link rel="icon" href="logo.png" type="image/png">
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
@@ -53,9 +49,7 @@ body{
     transition: background-color 0.5s ease;
 }
 
-body.emergency-mode {
-    background: #FF2E2E !important;
-}
+body.emergency-mode { background: #FF2E2E !important; }
 
 .container {
     max-width: 1200px;
@@ -73,7 +67,6 @@ header {
     padding: 10px 0;
 }
 
-/* メニューボタン（ハンバーガーアイコン）のスタイル修正 */
 .menu-btn {
     position: absolute;
     left: 10px;
@@ -101,7 +94,6 @@ header {
     border-radius: 2px;
 }
 
-/* サイドバーのスタイル修正 */
 .sidebar {
     position: fixed;
     top: 0;
@@ -117,9 +109,7 @@ header {
     overflow-y: auto;
 }
 
-.sidebar.open {
-    left: 0;
-}
+.sidebar.open { left: 0; }
 
 .sidebar-title {
     font-size: 20px;
@@ -150,9 +140,7 @@ header {
     margin-bottom: 10px;
 }
 
-.sub-menu.show {
-    display: block;
-}
+.sub-menu.show { display: block; }
 
 .btn-add-user { background-color: #ff9800; color: white; }
 .btn-rename { background-color: #9c27b0; color: white; }
@@ -213,12 +201,7 @@ h1 {
     gap: 8px;
 }
 
-.header-logo {
-    height: 64px;
-    width: auto;
-    object-fit: contain;
-}
-
+.header-logo { height: 64px; width: auto; object-fit: contain; }
 body.emergency-mode h1 { color: #FFFFFF; }
 
 #map { width:100%; height:60vh; }
@@ -436,7 +419,6 @@ function setupTargetOnMap(target) {
     targetState[target.id] = {
         marker: marker,
         trackLine: trackLine,
-        pathHistory: [],
         lastPos: initialPoint
     };
 
@@ -477,6 +459,7 @@ function renderInfoCard(target) {
 
 async function fetchRealTimeLocation() {
     try {
+        // 1. 最新ステータスの取得
         const response = await fetch('/api/location');
         const data = await response.json();
 
@@ -484,7 +467,7 @@ async function fetchRealTimeLocation() {
             const lat = parseFloat(data.lat);
             const lng = parseFloat(data.lng);
 
-            updateTargetLocation(1, lat, lng, data.battery);
+            updateTargetStatus(1, lat, lng, data.battery);
 
             if (data.buzzer === "ON") {
                 triggerEmergencyFor(data.name || "Aちゃん");
@@ -492,34 +475,41 @@ async function fetchRealTimeLocation() {
                 isEmergencyActive = false;
             }
         }
+
+        // 2. サーバーから全履歴を取得して軌跡を描画（全画面同期）
+        const histResponse = await fetch('/api/location/history');
+        const historyData = await histResponse.json();
+
+        if (Array.isArray(historyData)) {
+            const targetId = 1;
+            const state = targetState[targetId];
+
+            if (state) {
+                const now = Date.now();
+                const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+                // 対象IDと直近2時間以内のログに絞り込む
+                const recentPoints = historyData
+                    .filter(item => (item.userId === targetId || !item.userId) && (now - item.timestamp) <= TWO_HOURS_MS)
+                    .map(item => [item.lat, item.lng]);
+
+                // ポリラインを一括更新
+                state.trackLine.setLatLngs(recentPoints);
+            }
+        }
+
     } catch (e) {
         console.error("データ取得エラー:", e);
     }
 }
 
-function updateTargetLocation(id, lat, lng, battery) {
+function updateTargetStatus(id, lat, lng, battery) {
     const state = targetState[id];
     if (!state) return;
 
-    const now = Date.now();
     const currentPos = [lat, lng];
     state.lastPos = currentPos;
-
     state.marker.setLatLng(currentPos);
-
-    state.pathHistory.push({
-        lat: lat,
-        lng: lng,
-        timestamp: now
-    });
-
-    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-
-    const recentPoints = state.pathHistory
-        .filter(item => (now - item.timestamp) <= TWO_HOURS_MS)
-        .map(item => [item.lat, item.lng]);
-
-    state.trackLine.setLatLngs(recentPoints);
 
     const dist = getDistance(home.lat, home.lng, lat, lng);
     const distEl = document.getElementById(\`dist-\${id}\`);
@@ -540,8 +530,6 @@ function updateTargetLocation(id, lat, lng, battery) {
             }
         }
     }
-
-    saveLocationToLocalStorage(id, lat, lng);
 }
 
 function saveTargetsToStorage() {
@@ -804,36 +792,34 @@ function triggerEmergencyFor(userName) {
     }
 }
 
-function saveLocationToLocalStorage(id, lat, lng) {
-    const history = JSON.parse(localStorage.getItem("locationLogs") || "[]");
-    history.push({
-        userId: id,
-        timestamp: new Date().toISOString(),
-        lat: lat,
-        lng: lng
-    });
-    localStorage.setItem("locationLogs", JSON.stringify(history));
-}
-
-function downloadLocationHistory() {
-    const history = localStorage.getItem("locationLogs");
-    if (!history || JSON.parse(history).length === 0) {
-        return alert("保存された位置情報データがありません。");
+async function downloadLocationHistory() {
+    try {
+        const response = await fetch('/api/location/history');
+        const history = await response.text();
+        if (!history || JSON.parse(history).length === 0) {
+            return alert("保存された位置情報データがありません。");
+        }
+        const blob = new Blob([history], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = \`location_history_\${new Date().toISOString().slice(0,10)}.json\`;
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        alert("ダウンロードに失敗しました。");
     }
-    const blob = new Blob([history], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = \`location_history_\${new Date().toISOString().slice(0,10)}.json\`;
-    a.click();
-    URL.revokeObjectURL(url);
     closeMenu();
 }
 
-function clearLocationHistory() {
+async function clearLocationHistory() {
     if (confirm("保存された位置情報ログをすべて削除しますか？")) {
-        localStorage.removeItem("locationLogs");
-        alert("ログを削除しました。");
+        try {
+            await fetch('/api/location/history', { method: 'DELETE' });
+            alert("ログを削除しました。");
+        } catch (e) {
+            alert("ログの削除に失敗しました。");
+        }
     }
     closeMenu();
 }
@@ -861,7 +847,7 @@ export default {
       return new Response(null, {
         headers: {
           "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
         },
       });
@@ -922,6 +908,23 @@ export default {
             buzzer: buzzer,
             raw_data: rawBody
           };
+
+          // --- KVに全履歴を蓄積保存する処理を追加 ---
+          if (env.LOCATION_KV) {
+            const historyJson = await env.LOCATION_KV.get("location_history");
+            let history = historyJson ? JSON.parse(historyJson) : [];
+
+            history.push({
+              userId: 1,
+              timestamp: Date.now(),
+              lat: lat,
+              lng: lng
+            });
+
+            // 直近1000件のみ保持してKVに書き込み
+            if (history.length > 1000) history = history.slice(-1000);
+            await env.LOCATION_KV.put("location_history", JSON.stringify(history));
+          }
         }
 
         return new Response(JSON.stringify({ status: "success", location: lastKnownLocation }), {
@@ -936,8 +939,32 @@ export default {
       }
     }
 
-    if (url.pathname === "/api/location") {
+    // 最新ステータスの返却
+    if (url.pathname === "/api/location" && request.method === "GET") {
       return new Response(JSON.stringify(lastKnownLocation), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      });
+    }
+
+    // 全履歴データの返却（全画面同期用）
+    if (url.pathname === "/api/location/history" && request.method === "GET") {
+      let historyJson = "[]";
+      if (env.LOCATION_KV) {
+        historyJson = (await env.LOCATION_KV.get("location_history")) || "[]";
+      }
+      return new Response(historyJson, {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
+      });
+    }
+
+    // ログの完全削除
+    if (url.pathname === "/api/location/history" && request.method === "DELETE") {
+      if (env.LOCATION_KV) {
+        await env.LOCATION_KV.delete("location_history");
+      }
+      return new Response(JSON.stringify({ status: "cleared" }), {
         status: 200,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }
       });
