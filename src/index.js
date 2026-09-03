@@ -174,7 +174,7 @@ header {
 .btn-sub { background-color: #4caf50; color: white; font-size: 13px; padding: 10px; }
 .btn-home.active { background-color: #e65100; animation: pulse-btn 1s infinite alternate; }
 .btn-data { background-color: #0288d1; color: white; }
-.btn-clear { background-color: #757575; color: white; }
+.btn-clear { background-color: #ff0000; color: white; }
 
 @keyframes pulse-btn {
     0% { transform: scale(1); }
