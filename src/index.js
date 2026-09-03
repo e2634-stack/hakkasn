@@ -305,7 +305,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()">🏠 家の位置を変更</button>
     <div id="homeSubMenu" class="sub-menu">
         <button id="changeHomeBtn" class="sidebar-btn btn-sub" onclick="toggleSetHomeMode()">📍 地図上をタップ</button>
-        <button class="sidebar-btn btn-sub" onclick="openAddressModal()">🏠 住所を入力</button>
+        <button class="sidebar-btn btn-sub" onclick="openAddressModal()"><img src="home.png" alt="ホーム" class="btn-icon"> 住所を入力</button>
     </div>
 </div>
 
