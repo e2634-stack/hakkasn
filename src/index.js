@@ -74,7 +74,7 @@ header {
 
 .menu-btn {
     position: absolute;
-    left: 10px;
+    right: 10px;
     background: white;
     border: 2px solid #2B1C0B;
     border-radius: 8px;
@@ -94,7 +94,7 @@ header {
     background-color: #2B1C0B;
     border-radius: 2px;
     position: absolute;
-    left: 50%;
+    right: 50%;
     transform: translateX(-50%);
 }
 
@@ -118,7 +118,7 @@ header {
 .sidebar {
     position: fixed;
     top: 0;
-    left: -290px;
+    right: -290px;
     width: 270px;
     height: 100%;
     background-color: #FFFFFF;
@@ -131,7 +131,7 @@ header {
 }
 
 .sidebar.open {
-    left: 0;
+    right: 0;
 }
 
 .sidebar-title {
