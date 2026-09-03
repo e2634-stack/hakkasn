@@ -94,7 +94,7 @@ header {
     background-color: #2B1C0B;
     border-radius: 2px;
     position: absolute;
-    right: 50%;
+    left: 50%;
     transform: translateX(-50%);
 }
 
