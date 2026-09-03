@@ -303,17 +303,17 @@ body.emergency-mode h1 { color: #FFFFFF; }
 
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
-    <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ 見守り対象を追加</button>
-    <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️ 名前の変更</button>
-    <button class="sidebar-btn btn-delete-user" onclick="openDeleteModal()">🗑 対象者を削除</button>
+    <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ 子供を追加</button>
+    <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️名前変更</button>
     <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 移動データをダウンロード</button>
-    <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 移動データを削除</button>
 
     <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()"><img src="home.png" alt="ホーム" class="btn-icon"> 家の位置を変更</button>
     <div id="homeSubMenu" class="sub-menu">
         <button id="changeHomeBtn" class="sidebar-btn btn-sub" onclick="toggleSetHomeMode()">📍 地図上をタップ</button>
         <button class="sidebar-btn btn-sub" onclick="openAddressModal()"><img src="home.png" alt="ホーム" class="btn-icon"> 住所を入力</button>
     </div>
+    <button class="sidebar-btn btn-delete-user" onclick="openDeleteModal()">🗑 子供を削除</button>
+    <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 移動データを削除</button>
 </div>
 
 <div id="overlay" class="overlay" onclick="closeMenu()"></div>
