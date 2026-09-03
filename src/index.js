@@ -167,6 +167,13 @@ header {
     display: block;
 }
 
+.btn-icon {
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.15em;
+    object-fit: contain;
+}
+
 .btn-add-user { background-color: #ff9800; color: white; }
 .btn-rename { background-color: #ee7800; color: white; }
 .btn-delete-user { background-color: #e53935; color: white; }
@@ -302,10 +309,10 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 移動データをダウンロード</button>
     <button class="sidebar-btn btn-clear" onclick="clearLocationHistory()">🗑 移動データを削除</button>
 
-    <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()">🏠 家の位置を変更</button>
+    <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()"><img src="home.png" alt="ホーム" class="btn-icon"> 家の位置を変更</button>
     <div id="homeSubMenu" class="sub-menu">
         <button id="changeHomeBtn" class="sidebar-btn btn-sub" onclick="toggleSetHomeMode()">📍 地図上をタップ</button>
-        <button class="sidebar-btn btn-sub" onclick="openAddressModal()">🏠 住所を入力</button>
+        <button class="sidebar-btn btn-sub" onclick="openAddressModal()"><img src="home.png" alt="ホーム" class="btn-icon"> 住所を入力</button>
     </div>
 </div>
 
