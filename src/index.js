@@ -303,8 +303,8 @@ body.emergency-mode h1 { color: #FFFFFF; }
 
 <div id="sidebar" class="sidebar">
     <div class="sidebar-title">メニュー</div>
-    <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ 子供を追加</button>
-    <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️名前変更</button>
+    <button class="sidebar-btn btn-add-user" onclick="openAddUserModal()">➕ お子さんを追加</button>
+    <button class="sidebar-btn btn-rename" onclick="openRenameModal()">✏️お子さんの名前変更</button>
     <button class="sidebar-btn btn-data" onclick="downloadLocationHistory()">📥 移動データをダウンロード</button>
 
     <button class="sidebar-btn btn-home" onclick="toggleHomeSubMenu()"><img src="home.png" alt="ホーム" class="btn-icon"> 家の位置を変更</button>
@@ -328,7 +328,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
 </div>
 
 <div id="addUserModal" class="modal">
-    <div class="modal-title">新しい見守り対象を追加</div>
+    <div class="modal-title">新しいお子さんを追加</div>
     <input type="text" id="newUserNameInput" class="modal-input" placeholder="例: Bちゃん">
     <div class="modal-btns">
         <button class="modal-btn-cancel" onclick="closeAddUserModal()">キャンセル</button>
@@ -337,7 +337,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
 </div>
 
 <div id="renameModal" class="modal">
-    <div class="modal-title">対象者の名前を変更</div>
+    <div class="modal-title">お子さんの名前を変更</div>
     <select id="userSelectForRename" class="modal-select"></select>
     <input type="text" id="renameInput" class="modal-input" placeholder="新しい名前を入力">
     <div class="modal-btns">
