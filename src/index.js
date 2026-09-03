@@ -313,7 +313,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
 
 <div id="addressModal" class="modal">
     <div class="modal-title">家の住所を入力</div>
-    <input type="text" id="addressInput" class="modal-input" placeholder="例: 東京都千代田区永田町1-7-1">
+    <input type="text" id="addressInput" class="modal-input" placeholder="例:兵庫県明石市魚住町西岡678-3">
     <div class="modal-btns">
         <button class="modal-btn-cancel" onclick="closeAddressModal()">キャンセル</button>
         <button class="modal-btn-search" onclick="searchAddress()">設定</button>
