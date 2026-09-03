@@ -168,7 +168,7 @@ header {
 }
 
 .btn-add-user { background-color: #ff9800; color: white; }
-.btn-rename { background-color: #9c27b0; color: white; }
+.btn-rename { background-color: #ee7800; color: white; }
 .btn-delete-user { background-color: #e53935; color: white; }
 .btn-home { background-color: #2e7d32; color: white; }
 .btn-sub { background-color: #4caf50; color: white; font-size: 13px; padding: 10px; }
