@@ -213,7 +213,7 @@ header {
 }
 .modal-btn-search { background: #0288d1; color: white; }
 .modal-btn-delete { background: #e53935; color: white; }
-.modal-btn-cancel { background: #ff0000; color: white; }
+.modal-btn-cancel { background: #B2D3A5; color: white; }
 
 h1 {
     text-align: center;
