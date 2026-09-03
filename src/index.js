@@ -118,12 +118,12 @@ header {
 .sidebar {
     position: fixed;
     top: 0;
-    right: -290px;
+    right: -300px; 
     width: 270px;
     height: 100%;
     background-color: #FFFFFF;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.3);
-    transition: left 0.3s ease;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.3); 
+    transition: right 0.3s ease; 
     z-index: 2000;
     padding: 20px 15px;
     box-sizing: border-box;
