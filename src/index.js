@@ -277,7 +277,10 @@ body.emergency-mode h1 { color: #FFFFFF; }
     0% { transform: scale(1); opacity: 0.9; }
     100% { transform: scale(1.02); opacity: 1; }
 }
-
+.header-logo {
+  vertical-align: middle; /* ロゴと文字の中央を合わせる */
+  margin-right: 8px;      /* ロゴと文字の間に少し余白をつける */
+}
 .custom-pin {
     width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
     position: absolute; transform: rotate(-45deg);
@@ -360,7 +363,7 @@ body.emergency-mode h1 { color: #FFFFFF; }
     <div class="menu-btn" onclick="toggleMenu()">
         <span></span><span></span><span></span>
     </div>
-    <h1><img src="logo.png" alt="logo" class="header-logo"></h1>
+    <h1><img src="logo.png" alt="logo" class="header-logo">locat</h1>
 </header>
 
 <div id="map"></div>
